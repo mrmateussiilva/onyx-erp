@@ -34,6 +34,85 @@ async fn create_client(
 }
 
 #[tauri::command]
+async fn get_dashboard_stats(db: State<'_, DatabaseConnection>) -> Result<serde_json::Value, String> {
+    use sea_orm::{EntityTrait, PaginatorTrait, QuerySelect};
+    use chrono::Utc;
+
+    let today = Utc::now().date_naive();
+    let start_of_day = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
+
+    // Total de vendas hoje (exemplo simplificado)
+    let sales_today = db::entities::sale::Entity::find()
+        // .filter(db::entities::sale::Column::CreatedAt.gte(start_of_day)) // Precisaria configurar o filtro
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_revenue: f64 = sales_today.iter().map(|s| s.total).sum();
+    let sales_count = sales_today.len();
+    
+    let client_count = db::entities::client::Entity::find()
+        .count(db.inner())
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "revenue": format!("R$ {:.2}", total_revenue),
+        "sales_count": sales_count,
+        "client_count": client_count,
+        "alerts": 0 // Placeholder por enquanto
+    }))
+}
+
+#[tauri::command]
+async fn get_recent_sales(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::sale::Model>, String> {
+    use sea_orm::{EntityTrait, QueryOrder, QuerySelect};
+    db::entities::sale::Entity::find()
+        .order_by_desc(db::entities::sale::Column::Id)
+        .limit(5)
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_sales_report(
+    db: State<'_, DatabaseConnection>,
+    from_date: String,
+    to_date: String,
+    payment_method: String,
+) -> Result<Vec<db::entities::sale::Model>, String> {
+    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
+    
+    // Simplificado por enquanto (sem filtros reais de data/pagamento no DB ainda)
+    db::entities::sale::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_sale(
+    db: State<'_, DatabaseConnection>,
+    client_id: i32,
+    items: String,
+    total: f64,
+) -> Result<db::entities::sale::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set};
+    use chrono::Utc;
+
+    let sale = db::entities::sale::ActiveModel {
+        client_id: Set(client_id),
+        items: Set(items),
+        total: Set(total),
+        created_at: Set(Utc::now().into()),
+        ..Default::default()
+    };
+
+    sale.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
     use sea_orm::{ActiveModelTrait, Set, EntityTrait};
     use chrono::Utc;
@@ -82,7 +161,15 @@ pub fn run() {
         });
         Ok(())
     })
-    .invoke_handler(tauri::generate_handler![get_clients, create_client, seed_db])
+    .invoke_handler(tauri::generate_handler![
+        get_clients, 
+        create_client, 
+        seed_db, 
+        get_dashboard_stats, 
+        get_recent_sales,
+        get_sales_report,
+        create_sale
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
