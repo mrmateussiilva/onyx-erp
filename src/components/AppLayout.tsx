@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -7,10 +7,13 @@ import {
   BarChart3,
   Package,
   Droplets,
-  Search,
   Plus,
   UserPlus,
   LogOut,
+  Settings,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +25,7 @@ const navItems = [
   { label: "Clientes", icon: Users, path: "/clientes" },
   { label: "Produtos", icon: Package, path: "/produtos" },
   { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
+  { label: "Configurações", icon: Settings, path: "/configuracoes" },
 ];
 
 interface AppLayoutProps {
@@ -31,96 +35,174 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isAdmin = user.role === "admin";
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");
   };
 
+  const filteredItems = navItems.filter(item => {
+    if (item.path === "/configuracoes") return isAdmin;
+    return true;
+  });
+
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full bg-background/50">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 flex h-screen w-[220px] flex-col bg-sidebar-bg">
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 flex h-screen flex-col bg-sidebar-bg transition-all duration-300 ease-in-out border-r border-sidebar-hover shadow-xl",
+          isCollapsed ? "w-[80px]" : "w-[260px]"
+        )}
+      >
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-hover bg-sidebar-bg text-sidebar-fg hover:text-sidebar-fg-active shadow-md transition-all z-50 group"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4 transition-transform group-hover:scale-110" />
+          ) : (
+            <ChevronLeft className="h-4 w-4 transition-transform group-hover:scale-110" />
+          )}
+        </button>
+
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2.5 px-5 border-b border-sidebar-hover">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Droplets className="h-5 w-5 text-primary-foreground" />
+        <div className={cn(
+          "flex h-20 items-center border-b border-sidebar-hover transition-all duration-300",
+          isCollapsed ? "px-0 justify-center" : "px-6"
+        )}>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 shrink-0">
+            <Droplets className="h-6 w-6 text-primary-foreground" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-sidebar-fg-active leading-tight">AquaGás</span>
-            <span className="text-[10px] text-sidebar-fg leading-tight">Distribuidora</span>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col ml-3 animate-in fade-in slide-in-from-left-2 duration-300">
+              <span className="text-base font-bold text-sidebar-fg-active leading-tight tracking-tight">AquaGás</span>
+              <span className="text-xs text-sidebar-fg leading-tight opacity-70">Distribuidora</span>
+            </div>
+          )}
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+        <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+          {filteredItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center rounded-xl transition-all duration-200 group relative",
+                  isCollapsed ? "justify-center p-3" : "px-4 py-3 gap-4",
                   isActive
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                     : "text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-active"
                 )}
               >
-                <item.icon className="h-[18px] w-[18px]" />
-                <span>{item.label}</span>
+                <Icon className={cn(
+                  "shrink-0 transition-transform group-hover:scale-110",
+                  isCollapsed ? "h-6 w-6" : "h-[22px] w-[22px]",
+                  isActive ? "text-primary-foreground" : "text-sidebar-fg group-hover:text-primary"
+                )} />
+
+                {!isCollapsed && (
+                  <span className="text-sm font-semibold tracking-wide whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+                    {item.label}
+                  </span>
+                )}
+
+                {/* Tooltip for collapsed state */}
+                {isCollapsed && (
+                  <div className="absolute left-full ml-4 hidden group-hover:block z-50">
+                    <div className="bg-sidebar-bg border border-sidebar-hover text-sidebar-fg px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                      {item.label}
+                    </div>
+                  </div>
+                )}
               </Link>
             );
           })}
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-sidebar-hover px-2 py-3 flex flex-col gap-1">
+        <div className={cn(
+          "mt-auto border-t border-sidebar-hover py-4 flex flex-col gap-3 transition-all duration-300",
+          isCollapsed ? "px-2 items-center" : "px-4"
+        )}>
+          {/* User Profile Info */}
+          <div className={cn(
+            "flex items-center gap-3 mb-2 transition-all group/profile relative",
+            isCollapsed ? "justify-center px-0" : "px-2"
+          )}>
+            <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-primary to-primary-foreground flex items-center justify-center text-primary-foreground font-bold shadow-md border-2 border-primary/20">
+              {(user.username || "A").charAt(0).toUpperCase()}
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0 animate-in fade-in slide-in-from-left-2 duration-300">
+                <span className="text-sm font-bold text-sidebar-fg-active truncate capitalize">{user.username || "Admin"}</span>
+                <span className="text-[10px] text-primary font-black uppercase tracking-widest bg-primary/10 px-1.5 py-0.5 rounded w-fit">
+                  {user.role || "operador"}
+                </span>
+              </div>
+            )}
+            {isCollapsed && (
+              <div className="absolute left-full ml-4 hidden group-hover/profile:block z-50">
+                <div className="bg-sidebar-bg border border-sidebar-hover text-sidebar-fg px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                  {user.username} ({user.role})
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 text-sidebar-fg hover:bg-destructive/10 hover:text-destructive h-10"
+            className={cn(
+              "w-full justify-start text-sidebar-fg hover:bg-destructive/10 hover:text-destructive h-12 transition-all group",
+              isCollapsed ? "px-0 justify-center" : "gap-4 px-4"
+            )}
             onClick={handleLogout}
           >
-            <LogOut className="h-[18px] w-[18px]" />
-            <span className="text-sm">Sair do Sistema</span>
+            <LogOut className={cn(
+              "shrink-0 transition-transform group-hover:scale-110",
+              isCollapsed ? "h-6 w-6" : "h-[20px] w-[20px]"
+            )} />
+            {!isCollapsed && (
+              <span className="text-sm font-semibold animate-in fade-in slide-in-from-left-2 duration-300">Sair do Sistema</span>
+            )}
+
+            {isCollapsed && (
+              <div className="absolute left-full ml-4 hidden group-hover:block z-50">
+                <div className="bg-destructive text-destructive-foreground px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                  Sair
+                </div>
+              </div>
+            )}
           </Button>
-          <div className="px-3 pt-2">
-            <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-wider font-semibold">AquaGás Flow v1.0.0</p>
-          </div>
+          {!isCollapsed && (
+            <div className="px-4 pt-1 animate-in fade-in slide-in-from-left-2 duration-300">
+              <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-widest font-black">AquaGás Flow v0.0.1</p>
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col pl-[220px]">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6 card-shadow">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar clientes, produtos..."
-              className="pl-9 bg-muted border-0 h-9 text-sm"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="outline" className="gap-1.5 text-sm">
-              <Link to="/clientes">
-                <UserPlus className="h-4 w-4" />
-                Novo Cliente
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="gap-1.5 text-sm">
-              <Link to="/nova-venda">
-                <Plus className="h-4 w-4" />
-                Nova Venda
-              </Link>
-            </Button>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 p-6 animate-fade-in">{children}</main>
+      <div
+        className={cn(
+          "flex flex-1 flex-col transition-all duration-300 ease-in-out",
+          isCollapsed ? "pl-[80px]" : "pl-[260px]"
+        )}
+      >
+        {/* Content Area */}
+        <main className="flex-1 overflow-auto p-8 animate-in fade-in duration-500">
+          {children}
+        </main>
       </div>
     </div>
   );
