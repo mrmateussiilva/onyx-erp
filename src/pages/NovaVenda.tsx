@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Search,
   Plus,
@@ -22,12 +23,12 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
-const mockClients = [
-  { id: 1, name: "Maria Silva", phone: "(11) 98765-4321", address: "Rua A, 123" },
-  { id: 2, name: "João Santos", phone: "(11) 91234-5678", address: "Av. B, 456" },
-  { id: 3, name: "Ana Costa", phone: "(11) 99876-5432", address: "Rua C, 789" },
-  { id: 4, name: "Pedro Lima", phone: "(11) 93456-7890", address: "Rua D, 321" },
-];
+interface Client {
+  id: number;
+  name: string;
+  phone: string | null;
+  address: string | null;
+}
 
 const products = [
   { id: 1, name: "Água Mineral 20L", price: 18.0, icon: Droplets },
@@ -45,14 +46,30 @@ interface CartItem {
 
 const NovaVenda = () => {
   const [clientSearch, setClientSearch] = useState("");
-  const [selectedClient, setSelectedClient] = useState<typeof mockClients[0] | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("");
 
-  const filteredClients = mockClients.filter((c) =>
-    c.name.toLowerCase().includes(clientSearch.toLowerCase())
-  );
+  const searchClients = async () => {
+    try {
+      const allClients = await invoke<Client[]>("get_clients");
+      setClients(allClients.filter(c =>
+        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+      ));
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (showSuggestions) {
+      searchClients();
+    }
+  }, [clientSearch, showSuggestions]);
+
+  const filteredClients = clients;
 
   const addToCart = (product: typeof products[0]) => {
     setCart((prev) => {
@@ -78,6 +95,27 @@ const NovaVenda = () => {
   };
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+  const handleSaveSale = async () => {
+    if (!selectedClient || cart.length === 0 || !paymentMethod) return;
+
+    try {
+      const itemsString = cart.map(i => `${i.qty}x ${i.name}`).join(", ");
+      await invoke("create_sale", {
+        clientId: selectedClient.id,
+        items: itemsString,
+        total: subtotal
+      });
+      alert("Venda realizada com sucesso!");
+      setCart([]);
+      setSelectedClient(null);
+      setClientSearch("");
+      setPaymentMethod("");
+    } catch (error) {
+      console.error("Erro ao salvar venda:", error);
+      alert("Erro ao salvar venda.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -281,6 +319,7 @@ const NovaVenda = () => {
                 <Button
                   className="w-full gap-2 h-11 text-sm font-semibold"
                   disabled={cart.length === 0 || !selectedClient || !paymentMethod}
+                  onClick={handleSaveSale}
                 >
                   <Printer className="h-4 w-4" />
                   Salvar e Imprimir
@@ -289,6 +328,7 @@ const NovaVenda = () => {
                   variant="outline"
                   className="w-full gap-2 text-sm"
                   disabled={cart.length === 0 || !selectedClient || !paymentMethod}
+                  onClick={handleSaveSale}
                 >
                   <Save className="h-4 w-4" />
                   Salvar sem Imprimir
