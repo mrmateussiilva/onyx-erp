@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -10,6 +10,7 @@ import {
   Search,
   Plus,
   UserPlus,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,12 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   return (
     <div className="flex min-h-screen w-full">
@@ -68,8 +75,19 @@ export function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-sidebar-hover px-4 py-3">
-          <p className="text-[10px] text-sidebar-fg">v1.0.0 • AquaGás</p>
+        <div className="border-t border-sidebar-hover px-2 py-3 flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-3 text-sidebar-fg hover:bg-destructive/10 hover:text-destructive h-10"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-[18px] w-[18px]" />
+            <span className="text-sm">Sair do Sistema</span>
+          </Button>
+          <div className="px-3 pt-2">
+            <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-wider font-semibold">AquaGás Flow v1.0.0</p>
+          </div>
         </div>
       </aside>
 

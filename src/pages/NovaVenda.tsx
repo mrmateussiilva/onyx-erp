@@ -30,12 +30,12 @@ interface Client {
   address: string | null;
 }
 
-const products = [
-  { id: 1, name: "Água Mineral 20L", price: 18.0, icon: Droplets },
-  { id: 2, name: "Água Mineral 10L", price: 12.0, icon: Droplets },
-  { id: 3, name: "Gás GLP P13", price: 60.0, icon: Flame },
-  { id: 4, name: "Gás GLP P45", price: 135.0, icon: Flame },
-];
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+}
 
 interface CartItem {
   productId: number;
@@ -47,10 +47,20 @@ interface CartItem {
 const NovaVenda = () => {
   const [clientSearch, setClientSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("");
+
+  const loadData = async () => {
+    try {
+      const p = await invoke<Product[]>("get_products");
+      setProducts(p);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const searchClients = async () => {
     try {
@@ -64,6 +74,10 @@ const NovaVenda = () => {
   };
 
   useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
     if (showSuggestions) {
       searchClients();
     }
@@ -71,7 +85,7 @@ const NovaVenda = () => {
 
   const filteredClients = clients;
 
-  const addToCart = (product: typeof products[0]) => {
+  const addToCart = (product: Product) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
       if (existing) {
@@ -200,24 +214,32 @@ const NovaVenda = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                {products.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    className="flex items-center gap-3 rounded-lg border border-border/60 p-3 text-left transition-all hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <product.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{product.name}</p>
-                      <p className="text-sm font-semibold text-primary">
-                        R$ {product.price.toFixed(2)}
-                      </p>
-                    </div>
-                    <Plus className="ml-auto h-4 w-4 text-muted-foreground" />
-                  </button>
-                ))}
+                {products.map((product) => {
+                  const Icon = product.category === "gás" ? Flame : Droplets;
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      className="flex items-center gap-3 rounded-lg border border-border/60 p-3 text-left transition-all hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{product.name}</p>
+                        <p className="text-sm font-semibold text-primary">
+                          R$ {product.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <Plus className="ml-auto h-4 w-4 text-muted-foreground" />
+                    </button>
+                  );
+                })}
+                {products.length === 0 && (
+                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">
+                    Carregue o catálogo em Gestão para vender.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
