@@ -1,5 +1,5 @@
-use sea_orm::DatabaseConnection;
-use tauri::State;
+use sea_orm::{DatabaseConnection, PaginatorTrait};
+use tauri::{Manager, State};
 
 pub mod db;
 
@@ -38,7 +38,7 @@ async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
     use sea_orm::{ActiveModelTrait, Set, EntityTrait};
     use chrono::Utc;
 
-    let count = db::entities::client::Entity::find().count(db.inner()).await.map_err(|e| e.to_string())?;
+    let count = db::entities::client::Entity::find().count(db.inner()).await.map_err(|e: sea_orm::DbErr| e.to_string())?;
     
     if count == 0 {
         let clients = vec![
@@ -55,7 +55,7 @@ async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
                 created_at: Set(Utc::now().into()),
                 ..Default::default()
             };
-            let _ = client.insert(db.inner()).await.map_err(|e| e.to_string())?;
+            let _ = client.insert(db.inner()).await.map_err(|e: sea_orm::DbErr| e.to_string())?;
         }
         Ok("Dados iniciais criados com sucesso!".into())
     } else {

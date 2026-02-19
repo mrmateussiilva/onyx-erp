@@ -29,8 +29,8 @@ async fn setup_schema(db: &DatabaseConnection) -> anyhow::Result<()> {
     let schema = Schema::new(builder);
     
     // Criar tabelas se elas não existirem
-    let _ = db.execute(builder.build(&schema.create_table_from_entity(entities::client::Entity).if_not_exists())).await;
-    let _ = db.execute(builder.build(&schema.create_table_from_entity(entities::sale::Entity).if_not_exists())).await;
+    let _ = db.execute(builder.build(schema.create_table_from_entity(entities::client::Entity).if_not_exists())).await;
+    let _ = db.execute(builder.build(schema.create_table_from_entity(entities::sale::Entity).if_not_exists())).await;
     
     Ok(())
 }
