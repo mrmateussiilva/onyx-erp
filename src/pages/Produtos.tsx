@@ -8,15 +8,11 @@ import {
     Flame,
     Trash2,
     Edit3,
-    TrendingUp,
-    LineChart,
-    Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
     DialogContent,
@@ -42,19 +38,11 @@ interface Product {
     category: string;
 }
 
-interface User {
-    id: number;
-    username: string;
-    name: string;
-    role: string;
-}
-
 const Produtos = () => {
     const [products, setProducts] = useState<Product[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
     const [isNewProductOpen, setIsNewProductOpen] = useState(false);
 
-    // Form fields for product
+    // Form fields
     const [prodName, setProdName] = useState("");
     const [prodPrice, setProdPrice] = useState("");
     const [prodStock, setProdStock] = useState("");
@@ -67,8 +55,6 @@ const Produtos = () => {
     const loadData = async () => {
         try {
             const p = await invoke<Product[]>("get_products");
-            // Note: We'll need a get_users command if we really want to list them, 
-            // but for now let's focus on products.
             setProducts(p);
         } catch (err) {
             console.error(err);
@@ -84,9 +70,7 @@ const Produtos = () => {
                 category: prodCategory
             });
             setIsNewProductOpen(false);
-            setProdName("");
-            setProdPrice("");
-            setProdStock("");
+            setProdName(""); setProdPrice(""); setProdStock("");
             loadData();
         } catch (err) {
             alert("Erro ao criar produto: " + err);
@@ -97,8 +81,8 @@ const Produtos = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Gestão</h1>
-                    <p className="text-sm text-muted-foreground">Produtos e controle de acesso</p>
+                    <h1 className="text-2xl font-bold text-foreground">Produtos</h1>
+                    <p className="text-sm text-muted-foreground">Catálogo e controle de estoque</p>
                 </div>
                 <Dialog open={isNewProductOpen} onOpenChange={setIsNewProductOpen}>
                     <DialogTrigger asChild>
@@ -149,106 +133,71 @@ const Produtos = () => {
                 </Dialog>
             </div>
 
-            <Tabs defaultValue="produtos" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-                    <TabsTrigger value="produtos" className="gap-2">
-                        <Package className="h-4 w-4" />
-                        Produtos
-                    </TabsTrigger>
-                    <TabsTrigger value="usuarios" className="gap-2">
-                        <Users className="h-4 w-4" />
-                        Usuários
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="produtos" className="mt-6">
-                    <Card className="card-shadow border-border/60">
-                        <CardHeader className="pb-3 border-b">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-base font-semibold">Catálogo Ativo</CardTitle>
-                                <div className="relative w-64">
-                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                    <Input placeholder="Buscar produto..." className="pl-9 h-9 text-xs" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
-                                            <th className="px-6 py-3">Produto</th>
-                                            <th className="px-6 py-3">Categoria</th>
-                                            <th className="px-6 py-3 text-right">Preço</th>
-                                            <th className="px-6 py-3 text-right">Estoque</th>
-                                            <th className="px-6 py-3 text-right">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {products.map((prod) => (
-                                            <tr key={prod.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                                                            {prod.category === "água" ? (
-                                                                <Droplets className="h-5 w-5 text-primary" />
-                                                            ) : (
-                                                                <Flame className="h-5 w-5 text-primary" />
-                                                            )}
-                                                        </div>
-                                                        <span className="text-sm font-medium">{prod.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-xs capitalize bg-muted px-2 py-1 rounded-full">{prod.category}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm font-semibold text-right">
-                                                    R$ {prod.price.toFixed(2)}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className={`text-sm font-bold ${prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground'}`}>
-                                                        {prod.stock_quantity}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                            <Edit3 className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {products.length === 0 && (
-                                            <tr>
-                                                <td colSpan={5} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                                                    Nenhum produto cadastrado.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="usuarios" className="mt-6">
-                    <Card className="card-shadow border-border/60">
-                        <CardHeader>
-                            <CardTitle className="text-base font-semibold">Usuários do Sistema</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground text-center py-12">
-                                Interface de gestão de usuários será implementada no próximo passo para incluir permissões RFAC.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <Card className="card-shadow border-border/60">
+                <CardHeader className="pb-3 border-b">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-base font-semibold">Catálogo Ativo</CardTitle>
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input placeholder="Buscar produto..." className="pl-9 h-9 text-xs" />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                    <th className="px-6 py-3">Produto</th>
+                                    <th className="px-6 py-3">Categoria</th>
+                                    <th className="px-6 py-3 text-right">Preço</th>
+                                    <th className="px-6 py-3 text-right">Estoque</th>
+                                    <th className="px-6 py-3 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {products.map((prod) => (
+                                    <tr key={prod.id} className="hover:bg-muted/30 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                                                    {prod.category === "água" ? (
+                                                        <Droplets className="h-5 w-5 text-primary" />
+                                                    ) : (
+                                                        <Flame className="h-5 w-5 text-primary" />
+                                                    )}
+                                                </div>
+                                                <span className="text-sm font-medium">{prod.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs capitalize bg-muted px-2 py-1 rounded-full">{prod.category}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-semibold text-right">
+                                            R$ {prod.price.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={`text-sm font-bold ${prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground'}`}>
+                                                {prod.stock_quantity}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <Edit3 className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };
