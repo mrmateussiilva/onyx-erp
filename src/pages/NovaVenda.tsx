@@ -37,6 +37,17 @@ interface Product {
   category: string;
 }
 
+interface ShippingMethod {
+  id: number;
+  name: string;
+  fee: number;
+}
+
+interface PaymentMethod {
+  id: number;
+  name: string;
+}
+
 interface CartItem {
   productId: number;
   name: string;
@@ -48,15 +59,26 @@ const NovaVenda = () => {
   const [clientSearch, setClientSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState("");
+
+  const [selectedPayment, setSelectedPayment] = useState("");
+  const [selectedShipping, setSelectedShipping] = useState("");
 
   const loadData = async () => {
     try {
-      const p = await invoke<Product[]>("get_products");
+      const [p, s, pay] = await Promise.all([
+        invoke<Product[]>("get_products"),
+        invoke<ShippingMethod[]>("get_shipping_methods"),
+        invoke<PaymentMethod[]>("get_payment_methods")
+      ]);
       setProducts(p);
+      setShippingMethods(s);
+      setPaymentMethods(pay);
     } catch (err) {
       console.error(err);
     }
@@ -109,22 +131,24 @@ const NovaVenda = () => {
   };
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const shippingFee = shippingMethods.find(m => m.name === selectedShipping)?.fee || 0;
 
   const handleSaveSale = async () => {
-    if (!selectedClient || cart.length === 0 || !paymentMethod) return;
+    if (!selectedClient || cart.length === 0 || !selectedPayment || !selectedShipping) return;
 
     try {
       const itemsString = cart.map(i => `${i.qty}x ${i.name}`).join(", ");
       await invoke("create_sale", {
         clientId: selectedClient.id,
         items: itemsString,
-        total: subtotal
+        total: subtotal + shippingFee
       });
       alert("Venda realizada com sucesso!");
       setCart([]);
       setSelectedClient(null);
       setClientSearch("");
-      setPaymentMethod("");
+      setSelectedPayment("");
+      setSelectedShipping("");
     } catch (error) {
       console.error("Erro ao salvar venda:", error);
       alert("Erro ao salvar venda.");
@@ -307,40 +331,59 @@ const NovaVenda = () => {
 
               <Separator />
 
-              {/* Payment */}
-              <div>
-                <Label className="text-xs text-muted-foreground">Forma de Pagamento</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="cartao-debito">Cartão Débito</SelectItem>
-                    <SelectItem value="cartao-credito">Cartão Crédito</SelectItem>
-                    <SelectItem value="fiado">Fiado</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Payment and Delivery */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Pagamento</Label>
+                  <Select value={selectedPayment} onValueChange={setSelectedPayment}>
+                    <SelectTrigger className="mt-1.5 h-9 text-xs">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map(m => (
+                        <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Entrega</Label>
+                  <Select value={selectedShipping} onValueChange={setSelectedShipping}>
+                    <SelectTrigger className="mt-1.5 h-9 text-xs">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shippingMethods.map(m => (
+                        <SelectItem key={m.id} value={m.name}>{m.name} (+R${m.fee.toFixed(2)})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Separator />
 
               {/* Total */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Subtotal</span>
-                <span className="text-sm font-medium">R$ {subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-foreground">Total</span>
-                <span className="text-lg font-bold text-primary">R$ {subtotal.toFixed(2)}</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Subtotal</span>
+                  <span className="text-xs font-medium">R$ {subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Taxa de Entrega</span>
+                  <span className="text-xs font-medium">R$ {shippingFee.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <span className="text-lg font-bold text-foreground">Total</span>
+                  <span className="text-lg font-bold text-primary">R$ {(subtotal + shippingFee).toFixed(2)}</span>
+                </div>
               </div>
 
               {/* Actions */}
               <div className="space-y-2 pt-2">
                 <Button
                   className="w-full gap-2 h-11 text-sm font-semibold"
-                  disabled={cart.length === 0 || !selectedClient || !paymentMethod}
+                  disabled={cart.length === 0 || !selectedClient || !selectedPayment || !selectedShipping}
                   onClick={handleSaveSale}
                 >
                   <Printer className="h-4 w-4" />
@@ -349,7 +392,7 @@ const NovaVenda = () => {
                 <Button
                   variant="outline"
                   className="w-full gap-2 text-sm"
-                  disabled={cart.length === 0 || !selectedClient || !paymentMethod}
+                  disabled={cart.length === 0 || !selectedClient || !selectedPayment || !selectedShipping}
                   onClick={handleSaveSale}
                 >
                   <Save className="h-4 w-4" />
