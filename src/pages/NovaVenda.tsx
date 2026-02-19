@@ -141,7 +141,8 @@ const NovaVenda = () => {
       await invoke("create_sale", {
         clientId: selectedClient.id,
         items: itemsString,
-        total: subtotal + shippingFee
+        total: subtotal + shippingFee,
+        paymentMethod: selectedPayment
       });
       alert("Venda realizada com sucesso!");
       setCart([]);

@@ -60,7 +60,6 @@ async fn get_dashboard_stats(db: State<'_, DatabaseConnection>) -> Result<serde_
     use chrono::Utc;
 
     let today = Utc::now().date_naive();
-    let start_of_day = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
 
     // Total de vendas hoje (exemplo simplificado)
     let sales_today = db::entities::sale::Entity::find()
@@ -86,30 +85,146 @@ async fn get_dashboard_stats(db: State<'_, DatabaseConnection>) -> Result<serde_
 }
 
 #[tauri::command]
-async fn get_recent_sales(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::sale::Model>, String> {
+async fn get_recent_sales(db: State<'_, DatabaseConnection>) -> Result<serde_json::Value, String> {
     use sea_orm::{EntityTrait, QueryOrder, QuerySelect};
-    db::entities::sale::Entity::find()
+    
+    let sales = db::entities::sale::Entity::find()
         .order_by_desc(db::entities::sale::Column::Id)
         .limit(5)
         .all(db.inner())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    let mut sales_with_names = Vec::new();
+    for sale in sales {
+        let client_name = db::entities::client::Entity::find_by_id(sale.client_id)
+            .one(db.inner())
+            .await
+            .unwrap_or(None)
+            .map(|c| c.name)
+            .unwrap_or_else(|| "Cliente removido".to_string());
+
+        sales_with_names.push(serde_json::json!({
+            "id": sale.id,
+            "client_name": client_name,
+            "items": sale.items,
+            "total": sale.total,
+            "created_at": sale.created_at
+        }));
+    }
+
+    Ok(serde_json::json!(sales_with_names))
 }
 
 #[tauri::command]
 async fn get_sales_report(
     db: State<'_, DatabaseConnection>,
-    from_date: String,
-    to_date: String,
+    start_iso: String,
+    end_iso: String,
     payment_method: String,
-) -> Result<Vec<db::entities::sale::Model>, String> {
-    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
+) -> Result<serde_json::Value, String> {
+    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, QueryOrder};
+    use chrono::{DateTime, Utc, Duration};
+    use std::collections::HashMap;
+
+    let start_date = DateTime::parse_from_rfc3339(&start_iso)
+        .map_err(|e| format!("Data de início inválida: {}", e))?
+        .with_timezone(&Utc);
     
-    // Simplificado por enquanto (sem filtros reais de data/pagamento no DB ainda)
-    db::entities::sale::Entity::find()
+    let end_date = DateTime::parse_from_rfc3339(&end_iso)
+        .map_err(|e| format!("Data final inválida: {}", e))?
+        .with_timezone(&Utc);
+
+    let duration = end_date.signed_duration_since(start_date);
+    let prev_start = start_date - duration - Duration::seconds(1);
+    let prev_end = start_date - Duration::seconds(1);
+
+    // 1. Buscar vendas do período atual
+    let mut query = db::entities::sale::Entity::find()
+        .filter(db::entities::sale::Column::CreatedAt.between(start_date, end_date));
+    
+    if payment_method != "todos" {
+        query = query.filter(db::entities::sale::Column::PaymentMethod.eq(payment_method.clone()));
+    }
+
+    let sales = query
+        .order_by_desc(db::entities::sale::Column::CreatedAt)
         .all(db.inner())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // 2. Buscar vendas do período anterior (para comparação)
+    let mut prev_query = db::entities::sale::Entity::find()
+        .filter(db::entities::sale::Column::CreatedAt.between(prev_start, prev_end));
+    
+    if payment_method != "todos" {
+        prev_query = prev_query.filter(db::entities::sale::Column::PaymentMethod.eq(payment_method));
+    }
+
+    let prev_sales = prev_query
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Cálculos Atuais
+    let total_revenue: f64 = sales.iter().map(|s| s.total).sum();
+    let sales_count = sales.len() as f64;
+    let avg_ticket = if sales_count > 0.0 { total_revenue / sales_count } else { 0.0 };
+    let unique_clients = sales.iter().map(|s| s.client_id).collect::<std::collections::HashSet<_>>().len();
+
+    // Cálculos Anteriores
+    let prev_revenue: f64 = prev_sales.iter().map(|s| s.total).sum();
+    let prev_sales_count = prev_sales.len() as f64;
+    let prev_avg_ticket = if prev_sales_count > 0.0 { prev_revenue / prev_sales_count } else { 0.0 };
+
+    // Função para calcular %
+    let calc_change = |curr: f64, prev: f64| -> String {
+        if prev == 0.0 { return if curr > 0.0 { "+100%".into() } else { "0%".into() }; }
+        let change = ((curr - prev) / prev) * 100.0;
+        format!("{}{:.1}%", if change >= 0.0 { "+" } else { "" }, change)
+    };
+
+    // Dados para o Gráfico (agrupado por dia)
+    let mut chart_map: HashMap<String, f64> = HashMap::new();
+    for sale in &sales {
+        let day = sale.created_at.date_naive().to_string();
+        *chart_map.entry(day).or_insert(0.0) += sale.total;
+    }
+    let mut chart_data: Vec<_> = chart_map.into_iter().map(|(date, revenue)| {
+        serde_json::json!({ "date": date, "revenue": revenue })
+    }).collect();
+    chart_data.sort_by_key(|v| v["date"].as_str().unwrap().to_string());
+
+    // Nomes dos clientes
+    let mut sales_with_names = Vec::new();
+    for sale in sales {
+        let client_name = db::entities::client::Entity::find_by_id(sale.client_id)
+            .one(db.inner())
+            .await
+            .unwrap_or(None)
+            .map(|c| c.name)
+            .unwrap_or_else(|| "Cliente removido".to_string());
+
+        sales_with_names.push(serde_json::json!({
+            "id": sale.id,
+            "client_name": client_name,
+            "items": sale.items,
+            "total": sale.total,
+            "payment_method": sale.payment_method,
+            "created_at": sale.created_at
+        }));
+    }
+
+    Ok(serde_json::json!({
+        "summary": {
+            "revenue": { "value": format!("R$ {:.2}", total_revenue), "change": calc_change(total_revenue, prev_revenue) },
+            "sales_count": { "value": sales_count.to_string(), "change": calc_change(sales_count, prev_sales_count) },
+            "average_ticket": { "value": format!("R$ {:.2}", avg_ticket), "change": calc_change(avg_ticket, prev_avg_ticket) },
+            "unique_clients": { "value": unique_clients.to_string(), "change": format!("+{}", unique_clients) }
+        },
+        "chart_data": chart_data,
+        "sales_list": sales_with_names
+    }))
 }
 
 #[tauri::command]
@@ -118,6 +233,7 @@ async fn create_sale(
     client_id: i32,
     items: String,
     total: f64,
+    payment_method: String,
 ) -> Result<db::entities::sale::Model, String> {
     use sea_orm::{ActiveModelTrait, Set};
     use chrono::Utc;
@@ -126,6 +242,7 @@ async fn create_sale(
         client_id: Set(client_id),
         items: Set(items),
         total: Set(total),
+        payment_method: Set(payment_method),
         created_at: Set(Utc::now().into()),
         ..Default::default()
     };
@@ -179,6 +296,23 @@ async fn create_user(
         ..Default::default()
     };
     user.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_users(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::user::Model>, String> {
+    db::entities::user::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_user(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    db::entities::user::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -295,6 +429,8 @@ pub fn run() {
         get_products,
         create_product,
         create_user,
+        get_users,
+        delete_user,
         get_shipping_methods,
         create_shipping_method,
         get_payment_methods,
