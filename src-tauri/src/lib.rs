@@ -182,6 +182,48 @@ async fn create_user(
 }
 
 #[tauri::command]
+async fn get_shipping_methods(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::shipping_method::Model>, String> {
+    db::entities::shipping_method::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_shipping_method(
+    db: State<'_, DatabaseConnection>,
+    name: String,
+    fee: f64,
+) -> Result<db::entities::shipping_method::Model, String> {
+    let method = db::entities::shipping_method::ActiveModel {
+        name: Set(name),
+        fee: Set(fee),
+        ..Default::default()
+    };
+    method.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_payment_methods(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::payment_method::Model>, String> {
+    db::entities::payment_method::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_payment_method(
+    db: State<'_, DatabaseConnection>,
+    name: String,
+) -> Result<db::entities::payment_method::Model, String> {
+    let method = db::entities::payment_method::ActiveModel {
+        name: Set(name),
+        ..Default::default()
+    };
+    method.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
     use sea_orm::{ActiveModelTrait, Set, EntityTrait};
     use chrono::Utc;
@@ -252,7 +294,11 @@ pub fn run() {
         login,
         get_products,
         create_product,
-        create_user
+        create_user,
+        get_shipping_methods,
+        create_shipping_method,
+        get_payment_methods,
+        create_payment_method
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
