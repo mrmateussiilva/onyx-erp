@@ -1,5 +1,26 @@
-use sea_orm::{DatabaseConnection, PaginatorTrait};
+use sea_orm::{DatabaseConnection, PaginatorTrait, EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set};
 use tauri::{Manager, State};
+use bcrypt::{hash, verify, DEFAULT_COST};
+
+#[tauri::command]
+async fn login(
+    db: State<'_, DatabaseConnection>,
+    username: String,
+    password: String,
+) -> Result<db::entities::user::Model, String> {
+    let user = db::entities::user::Entity::find()
+        .filter(db::entities::user::Column::Username.eq(username))
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Usuário não encontrado")?;
+
+    if verify(password, &user.password_hash).map_err(|e| e.to_string())? {
+        Ok(user)
+    } else {
+        Err("Senha incorreta".into())
+    }
+}
 
 pub mod db;
 
@@ -113,6 +134,54 @@ async fn create_sale(
 }
 
 #[tauri::command]
+async fn get_products(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::product::Model>, String> {
+    use sea_orm::EntityTrait;
+    db::entities::product::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_product(
+    db: State<'_, DatabaseConnection>,
+    name: String,
+    price: f64,
+    stock_quantity: i32,
+    category: String,
+) -> Result<db::entities::product::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set};
+    let product = db::entities::product::ActiveModel {
+        name: Set(name),
+        price: Set(price),
+        stock_quantity: Set(stock_quantity),
+        category: Set(category),
+        ..Default::default()
+    };
+    product.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_user(
+    db: State<'_, DatabaseConnection>,
+    username: String,
+    password_plain: String,
+    name: String,
+    role: String,
+) -> Result<db::entities::user::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set};
+    let password_hash = hash(password_plain, DEFAULT_COST).map_err(|e| e.to_string())?;
+    let user = db::entities::user::ActiveModel {
+        username: Set(username),
+        password_hash: Set(password_hash),
+        name: Set(name),
+        role: Set(role),
+        ..Default::default()
+    };
+    user.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
     use sea_orm::{ActiveModelTrait, Set, EntityTrait};
     use chrono::Utc;
@@ -120,6 +189,17 @@ async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
     let count = db::entities::client::Entity::find().count(db.inner()).await.map_err(|e: sea_orm::DbErr| e.to_string())?;
     
     if count == 0 {
+        // Criar usuário admin inicial
+        let admin_password = hash("admin123", DEFAULT_COST).unwrap();
+        let admin = db::entities::user::ActiveModel {
+            username: Set("admin".into()),
+            password_hash: Set(admin_password),
+            name: Set("Administrador".into()),
+            role: Set("admin".into()),
+            ..Default::default()
+        };
+        admin.insert(db.inner()).await.map_err(|e| e.to_string())?;
+
         let clients = vec![
             ("Maria Silva", Some("(11) 98765-4321".into()), Some("Rua A, 123 - Centro".into())),
             ("João Santos", Some("(11) 91234-5678".into()), Some("Av. B, 456 - Jardins".into())),
@@ -168,7 +248,11 @@ pub fn run() {
         get_dashboard_stats, 
         get_recent_sales,
         get_sales_report,
-        create_sale
+        create_sale,
+        login,
+        get_products,
+        create_product,
+        create_user
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
