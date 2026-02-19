@@ -1,95 +1,67 @@
-import { useState } from "react";
-import {
-  Search,
-  UserPlus,
-  Phone,
-  MapPin,
-  Droplets,
-  Calendar,
-  ShoppingCart,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge } from "@/components/StatusBadge";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+// ... (outros imports)
 
-const clients = [
-  {
-    id: 1,
-    name: "Maria Silva",
-    phone: "(11) 98765-4321",
-    address: "Rua A, 123 - Centro",
-    since: "Jan 2024",
-    totalPedidos: 48,
-    galoes: [
-      { id: "G001", vencimento: "15/03/2026", status: "expiring" as const },
-      { id: "G002", vencimento: "20/06/2026", status: "ok" as const },
-      { id: "G003", vencimento: "01/03/2026", status: "expired" as const },
-    ],
-    historico: [
-      { data: "18/02/2026", items: "2x Água 20L", total: "R$ 36,00", pagamento: "PIX" },
-      { data: "15/02/2026", items: "1x Gás P13", total: "R$ 60,00", pagamento: "Dinheiro" },
-      { data: "10/02/2026", items: "3x Água 20L", total: "R$ 54,00", pagamento: "PIX" },
-      { data: "05/02/2026", items: "1x Água 20L, 1x Gás P13", total: "R$ 78,00", pagamento: "Cartão" },
-    ],
-  },
-  {
-    id: 2,
-    name: "João Santos",
-    phone: "(11) 91234-5678",
-    address: "Av. B, 456 - Jardins",
-    since: "Mar 2024",
-    totalPedidos: 32,
-    galoes: [{ id: "G004", vencimento: "10/03/2026", status: "expiring" as const }],
-    historico: [
-      { data: "17/02/2026", items: "1x Gás P45", total: "R$ 135,00", pagamento: "Dinheiro" },
-      { data: "12/02/2026", items: "2x Água 20L", total: "R$ 36,00", pagamento: "PIX" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Ana Costa",
-    phone: "(11) 99876-5432",
-    address: "Rua C, 789 - Vila Nova",
-    since: "Jun 2024",
-    totalPedidos: 19,
-    galoes: [
-      { id: "G005", vencimento: "20/07/2026", status: "ok" as const },
-    ],
-    historico: [
-      { data: "16/02/2026", items: "1x Água 20L", total: "R$ 18,00", pagamento: "PIX" },
-    ],
-  },
-  {
-    id: 4,
-    name: "Restaurante Boa Mesa",
-    phone: "(11) 3333-4444",
-    address: "Av. Central, 1000 - Centro",
-    since: "Nov 2023",
-    totalPedidos: 125,
-    galoes: [
-      { id: "G006", vencimento: "01/03/2026", status: "expired" as const },
-      { id: "G007", vencimento: "01/03/2026", status: "expired" as const },
-      { id: "G008", vencimento: "15/05/2026", status: "ok" as const },
-      { id: "G009", vencimento: "15/05/2026", status: "ok" as const },
-      { id: "G010", vencimento: "10/03/2026", status: "expiring" as const },
-    ],
-    historico: [
-      { data: "18/02/2026", items: "5x Água 20L, 2x Gás P13", total: "R$ 210,00", pagamento: "Fiado" },
-      { data: "14/02/2026", items: "5x Água 20L", total: "R$ 90,00", pagamento: "PIX" },
-    ],
-  },
-];
+interface Client {
+  id: number;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  created_at: string;
+  // Temporariamente mockados enquanto não criamos as tabelas relacionadas
+  since?: string;
+  totalPedidos?: number;
+  galoes?: any[];
+  historico?: any[];
+}
 
 const Clientes = () => {
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number>(1);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      const data = await invoke<Client[]>("get_clients");
+      // Mapear dados do Rust para o formato esperado pelo frontend (com fallbacks)
+      const mappedData = data.map(client => ({
+        ...client,
+        since: new Date(client.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+        totalPedidos: client.totalPedidos || 0,
+        galoes: client.galoes || [],
+        historico: client.historico || []
+      }));
+
+      setClients(mappedData);
+      if (mappedData.length > 0 && selectedId === null) {
+        setSelectedId(mappedData[0].id);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar clientes:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filtered = clients.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
-  const selected = clients.find((c) => c.id === selectedId) || clients[0];
+
+  const selected = clients.find((c) => c.id === selectedId) || {
+    id: 0,
+    name: "Carregando...",
+    phone: "",
+    address: "",
+    since: "-",
+    totalPedidos: 0,
+    galoes: [],
+    historico: []
+  };
 
   return (
     <div className="space-y-6">
@@ -122,11 +94,10 @@ const Clientes = () => {
                 <button
                   key={client.id}
                   onClick={() => setSelectedId(client.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                    selectedId === client.id
-                      ? "bg-primary/10 border border-primary/20"
-                      : "hover:bg-muted"
-                  }`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${selectedId === client.id
+                    ? "bg-primary/10 border border-primary/20"
+                    : "hover:bg-muted"
+                    }`}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                     {client.name.charAt(0)}
