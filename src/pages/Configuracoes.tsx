@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { cn } from "@/lib/utils";
 import {
     Plus,
     Trash2,
     Truck,
     CreditCard,
     Users,
+    Search,
+    UserPlus,
+    Shield,
+    Lock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +24,15 @@ import {
     DialogTitle,
     DialogTrigger,
     DialogFooter,
+    DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface User {
     id: number;
@@ -46,10 +59,17 @@ const Configuracoes = () => {
 
     const [isNewShippingOpen, setIsNewShippingOpen] = useState(false);
     const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
+    const [isNewUserOpen, setIsNewUserOpen] = useState(false);
 
     const [shipName, setShipName] = useState("");
     const [shipFee, setShipFee] = useState("");
     const [payName, setPayName] = useState("");
+
+    // User Form
+    const [userName, setUserName] = useState("");
+    const [userUsername, setUserUsername] = useState("");
+    const [userPassword, setUserPassword] = useState("");
+    const [userRole, setUserRole] = useState("operador");
 
     useEffect(() => {
         loadData();
@@ -57,16 +77,42 @@ const Configuracoes = () => {
 
     const loadData = async () => {
         try {
-            const [s, pay] = await Promise.all([
+            const [s, pay, u] = await Promise.all([
                 invoke<ShippingMethod[]>("get_shipping_methods"),
-                invoke<PaymentMethod[]>("get_payment_methods")
+                invoke<PaymentMethod[]>("get_payment_methods"),
+                invoke<User[]>("get_users")
             ]);
             setShippingMethods(s);
             setPaymentMethods(pay);
-            // Usuários: Por enquanto não temos um 'get_users' comando completo,
-            // mas a infra está pronta no backend se necessário.
+            setUsers(u);
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const handleCreateUser = async () => {
+        try {
+            await invoke("create_user", {
+                name: userName,
+                username: userUsername,
+                passwordPlain: userPassword,
+                role: userRole
+            });
+            setIsNewUserOpen(false);
+            setUserName(""); setUserUsername(""); setUserPassword(""); setUserRole("operador");
+            loadData();
+        } catch (err) {
+            alert("Erro ao criar usuário: " + err);
+        }
+    };
+
+    const handleDeleteUser = async (id: number) => {
+        if (!confirm("Tem certeza que deseja remover este usuário?")) return;
+        try {
+            await invoke("delete_user", { id });
+            loadData();
+        } catch (err) {
+            alert("Erro ao remover usuário: " + err);
         }
     };
 
@@ -220,14 +266,104 @@ const Configuracoes = () => {
                 </TabsContent>
 
                 <TabsContent value="usuarios" className="mt-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input placeholder="Buscar usuário..." className="pl-9 h-9 text-xs" />
+                        </div>
+                        <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="gap-2">
+                                    <UserPlus className="h-4 w-4" />
+                                    Novo Usuário
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Novo Operador</DialogTitle>
+                                    <DialogDescription>Cadastre um novo usuário e defina as permissões de acesso.</DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                        <Label>Nome Completo</Label>
+                                        <Input value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Ex: Lucas Santos" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label>Usuário (Login)</Label>
+                                            <Input value={userUsername} onChange={(e) => setUserUsername(e.target.value)} placeholder="lucas.santos" />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>Senha</Label>
+                                            <Input type="password" value={userPassword} onChange={(e) => setUserPassword(e.target.value)} placeholder="********" />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Cargo / Permissão</Label>
+                                        <Select value={userRole} onValueChange={setUserRole}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="operador">Operador (Apenas Vendas)</SelectItem>
+                                                <SelectItem value="admin">Administrador (Acesso Total)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleCreateUser} className="w-full">Criar Usuário</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <Card className="card-shadow border-border/60">
-                        <CardHeader>
-                            <CardTitle className="text-base font-semibold">Usuários do Sistema</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground text-center py-12">
-                                Aqui você poderá gerenciar as permissões e cadastros de novos operadores em breve.
-                            </p>
+                        <CardContent className="p-0">
+                            <table className="w-full text-left">
+                                <thead className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                    <tr>
+                                        <th className="px-6 py-3">Nome</th>
+                                        <th className="px-6 py-3">Usuário</th>
+                                        <th className="px-6 py-3">Cargo</th>
+                                        <th className="px-6 py-3 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {users.map((u) => (
+                                        <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                                        {u.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-sm font-medium">{u.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-muted-foreground">{u.username}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={cn(
+                                                    "text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded",
+                                                    u.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                                )}>
+                                                    {u.role}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {u.username !== "admin" && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        onClick={() => handleDeleteUser(u.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </CardContent>
                     </Card>
                 </TabsContent>
