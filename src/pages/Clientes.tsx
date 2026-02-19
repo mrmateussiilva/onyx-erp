@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-// ... (outros imports)
+import {
+  Search,
+  UserPlus,
+  Phone,
+  MapPin,
+  Droplets,
+  Calendar,
+  ShoppingCart,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface Client {
   id: number;
