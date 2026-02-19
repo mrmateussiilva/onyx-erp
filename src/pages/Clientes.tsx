@@ -13,6 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 
 interface Client {
@@ -33,10 +43,32 @@ const Clientes = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Form states
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
 
   useEffect(() => {
     loadClients();
   }, []);
+
+  const handleCreateClient = async () => {
+    if (!name) return alert("O nome é obrigatório");
+    try {
+      await invoke("create_client", {
+        name,
+        phone: phone || null,
+        address: address || null
+      });
+      setIsDialogOpen(false);
+      setName(""); setPhone(""); setAddress("");
+      loadClients();
+    } catch (error) {
+      alert("Erro ao cadastrar cliente: " + error);
+    }
+  };
 
   const loadClients = async () => {
     try {
@@ -83,10 +115,55 @@ const Clientes = () => {
           <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
           <p className="text-sm text-muted-foreground">{clients.length} clientes cadastrados</p>
         </div>
-        <Button className="gap-1.5">
-          <UserPlus className="h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-1.5">
+              <UserPlus className="h-4 w-4" />
+              Novo Cliente
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogDescription>
+                Insira as informações básicas para o novo cadastro.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nome do cliente"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Telefone / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Endereço de Entrega</Label>
+                <Input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Rua, Número, Bairro..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleCreateClient}>Salvar Cliente</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
