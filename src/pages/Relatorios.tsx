@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   DollarSign,
   ShoppingCart,
@@ -20,35 +21,58 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const summaryCards = [
-  { label: "Faturamento", value: "R$ 18.450", icon: DollarSign, change: "+8%" },
-  { label: "Total de Vendas", value: "312", icon: ShoppingCart, change: "+12%" },
-  { label: "Ticket Médio", value: "R$ 59,13", icon: TrendingUp, change: "+3%" },
-  { label: "Clientes Ativos", value: "87", icon: Users, change: "+5" },
-];
-
-const salesData = [
-  { data: "18/02/2026", cliente: "Maria Silva", items: "2x Água 20L", pagamento: "PIX", total: "R$ 36,00" },
-  { data: "18/02/2026", cliente: "Restaurante Boa Mesa", items: "5x Água 20L, 2x Gás P13", pagamento: "Fiado", total: "R$ 210,00" },
-  { data: "17/02/2026", cliente: "João Santos", items: "1x Gás P45", pagamento: "Dinheiro", total: "R$ 135,00" },
-  { data: "16/02/2026", cliente: "Ana Costa", items: "1x Água 20L", pagamento: "PIX", total: "R$ 18,00" },
-  { data: "15/02/2026", cliente: "Maria Silva", items: "1x Gás P13", pagamento: "Dinheiro", total: "R$ 60,00" },
-  { data: "15/02/2026", cliente: "Pedro Lima", items: "2x Água 20L, 1x Gás P13", pagamento: "Cartão", total: "R$ 96,00" },
-  { data: "14/02/2026", cliente: "Restaurante Boa Mesa", items: "5x Água 20L", pagamento: "PIX", total: "R$ 90,00" },
-  { data: "14/02/2026", cliente: "Carla Mendes", items: "2x Gás P13", pagamento: "Dinheiro", total: "R$ 120,00" },
-  { data: "13/02/2026", cliente: "João Santos", items: "2x Água 20L", pagamento: "PIX", total: "R$ 36,00" },
-  { data: "12/02/2026", cliente: "Ana Costa", items: "1x Gás P13", pagamento: "Cartão", total: "R$ 60,00" },
-];
+interface Sale {
+  id: number;
+  client_id: number;
+  items: string;
+  total: number;
+  payment_method?: string; // Mock por enquanto
+  created_at: string;
+  client_name?: string;
+}
 
 const Relatorios = () => {
   const [dateFrom, setDateFrom] = useState("2026-02-01");
   const [dateTo, setDateTo] = useState("2026-02-19");
   const [paymentFilter, setPaymentFilter] = useState("todos");
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filtered = salesData.filter((s) => {
-    if (paymentFilter !== "todos" && s.pagamento.toLowerCase() !== paymentFilter) return false;
-    return true;
-  });
+  useEffect(() => {
+    loadReport();
+  }, [dateFrom, dateTo, paymentFilter]);
+
+  const loadReport = async () => {
+    try {
+      const data = await invoke<Sale[]>("get_sales_report", {
+        fromDate: dateFrom,
+        toDate: dateTo,
+        paymentMethod: paymentFilter
+      });
+      setSales(data);
+    } catch (error) {
+      console.error("Erro ao carregar relatório:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const summaryCards = [
+    {
+      label: "Faturamento",
+      value: `R$ ${sales.reduce((sum, s) => sum + s.total, 0).toFixed(2)}`,
+      icon: DollarSign,
+      change: "+0%"
+    },
+    { label: "Total de Vendas", value: sales.length.toString(), icon: ShoppingCart, change: "+0%" },
+    {
+      label: "Ticket Médio",
+      value: `R$ ${(sales.length > 0 ? sales.reduce((sum, s) => sum + s.total, 0) / sales.length : 0).toFixed(2)}`,
+      icon: TrendingUp,
+      change: "+0%"
+    },
+    { label: "Vendas Únicas", value: new Set(sales.map(s => s.client_id)).size.toString(), icon: Users, change: "+0" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -140,7 +164,7 @@ const Relatorios = () => {
           <CardTitle className="text-base font-semibold">
             Vendas no Período
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              ({filtered.length} registros)
+              ({sales.length} registros)
             </span>
           </CardTitle>
         </CardHeader>
@@ -157,19 +181,32 @@ const Relatorios = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((sale, i) => (
-                  <tr key={i} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3 text-sm">{sale.data}</td>
-                    <td className="px-6 py-3 text-sm font-medium">{sale.cliente}</td>
+                {sales.map((sale) => (
+                  <tr key={sale.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-3 text-sm">
+                      {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-3 text-sm font-medium">
+                      {sale.client_name || `Cliente #${sale.client_id}`}
+                    </td>
                     <td className="px-6 py-3 text-sm text-muted-foreground">{sale.items}</td>
                     <td className="px-6 py-3">
                       <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                        {sale.pagamento}
+                        {sale.payment_method || "Não inf."}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-sm font-semibold text-right">{sale.total}</td>
+                    <td className="px-6 py-3 text-sm font-semibold text-right">
+                      R$ {sale.total.toFixed(2)}
+                    </td>
                   </tr>
                 ))}
+                {sales.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                      Nenhuma venda encontrada para o período selecionado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
