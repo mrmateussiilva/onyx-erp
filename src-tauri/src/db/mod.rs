@@ -36,6 +36,12 @@ async fn setup_schema(db: &DatabaseConnection) -> anyhow::Result<()> {
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::shipping_method::Entity).if_not_exists())).await;
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::payment_method::Entity).if_not_exists())).await;
 
+    // Migração manual: adicionar payment_method se não existir
+    let _ = db.execute(sea_orm::Statement::from_string(
+        builder,
+        "ALTER TABLE sales ADD COLUMN payment_method TEXT DEFAULT 'Não informado'".to_string(),
+    )).await;
+
     // Garantir usuário admin inicial
     use sea_orm::{EntityTrait, PaginatorTrait, ActiveModelTrait, Set};
     use bcrypt::{hash, DEFAULT_COST};

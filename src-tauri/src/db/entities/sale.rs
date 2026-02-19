@@ -9,6 +9,7 @@ pub struct Model {
     pub client_id: i32,
     pub items: String, // Armazenado como JSON string por simplicidade inicial
     pub total: f64,
+    pub payment_method: String,
     pub created_at: DateTimeUtc,
 }
 
