@@ -357,6 +357,37 @@ async fn create_user(
 }
 
 #[tauri::command]
+async fn update_user(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    username: String,
+    password_plain: Option<String>,
+    name: String,
+    role: String,
+) -> Result<db::entities::user::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut user: db::entities::user::ActiveModel = db::entities::user::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Usuário não encontrado")?
+        .into();
+
+    user.username = Set(username);
+    user.name = Set(name);
+    user.role = Set(role);
+
+    if let Some(plain) = password_plain {
+        if !plain.is_empty() {
+            let password_hash = hash(plain, DEFAULT_COST).map_err(|e| e.to_string())?;
+            user.password_hash = Set(password_hash);
+        }
+    }
+
+    user.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn get_users(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::user::Model>, String> {
     db::entities::user::Entity::find()
         .all(db.inner())
@@ -396,6 +427,36 @@ async fn create_shipping_method(
 }
 
 #[tauri::command]
+async fn update_shipping_method(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    name: String,
+    fee: f64,
+) -> Result<db::entities::shipping_method::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut method: db::entities::shipping_method::ActiveModel = db::entities::shipping_method::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Método de envio não encontrado")?
+        .into();
+
+    method.name = Set(name);
+    method.fee = Set(fee);
+    method.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_shipping_method(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    use sea_orm::EntityTrait;
+    db::entities::shipping_method::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 async fn get_payment_methods(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::payment_method::Model>, String> {
     db::entities::payment_method::Entity::find()
         .all(db.inner())
@@ -413,6 +474,34 @@ async fn create_payment_method(
         ..Default::default()
     };
     method.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_payment_method(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    name: String,
+) -> Result<db::entities::payment_method::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut method: db::entities::payment_method::ActiveModel = db::entities::payment_method::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Método de pagamento não encontrado")?
+        .into();
+
+    method.name = Set(name);
+    method.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_payment_method(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    use sea_orm::EntityTrait;
+    db::entities::payment_method::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -487,12 +576,17 @@ pub fn run() {
         get_products,
         create_product,
         create_user,
+        update_user,
         get_users,
         delete_user,
         get_shipping_methods,
         create_shipping_method,
+        update_shipping_method,
+        delete_shipping_method,
         get_payment_methods,
         create_payment_method,
+        update_payment_method,
+        delete_payment_method,
         get_client_details,
         add_client_gallon
     ])

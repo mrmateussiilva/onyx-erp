@@ -71,6 +71,15 @@ const Configuracoes = () => {
     const [userPassword, setUserPassword] = useState("");
     const [userRole, setUserRole] = useState("operador");
 
+    // Edit States
+    const [editingShipping, setEditingShipping] = useState<ShippingMethod | null>(null);
+    const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editPassword, setEditPassword] = useState("");
+    const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+    const [isEditShippingOpen, setIsEditShippingOpen] = useState(false);
+    const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -135,6 +144,70 @@ const Configuracoes = () => {
             loadData();
         } catch (err) {
             alert("Erro ao criar forma de pagamento: " + err);
+        }
+    };
+
+    const handleUpdateShipping = async () => {
+        if (!editingShipping) return;
+        try {
+            await invoke("update_shipping_method", {
+                id: editingShipping.id,
+                name: editingShipping.name,
+                fee: parseFloat(editingShipping.fee.toString())
+            });
+            setIsEditShippingOpen(false);
+            loadData();
+        } catch (err) {
+            alert("Erro ao atualizar frete: " + err);
+        }
+    };
+
+    const handleDeleteShipping = async (id: number) => {
+        if (!confirm("Tem certeza que deseja remover este frete?")) return;
+        try {
+            await invoke("delete_shipping_method", { id });
+            loadData();
+        } catch (err) {
+            alert("Erro ao remover frete: " + err);
+        }
+    };
+
+    const handleUpdatePayment = async () => {
+        if (!editingPayment) return;
+        try {
+            await invoke("update_payment_method", { id: editingPayment.id, name: editingPayment.name });
+            setIsEditPaymentOpen(false);
+            loadData();
+        } catch (err) {
+            alert("Erro ao atualizar pagamento: " + err);
+        }
+    };
+
+    const handleDeletePayment = async (id: number) => {
+        if (!confirm("Tem certeza que deseja remover este pagamento?")) return;
+        try {
+            await invoke("delete_payment_method", { id });
+            loadData();
+        } catch (err) {
+            alert("Erro ao remover pagamento: " + err);
+        }
+    };
+
+    const handleUpdateUser = async () => {
+        if (!editingUser) return;
+        try {
+            await invoke("update_user", {
+                id: editingUser.id,
+                name: editingUser.name,
+                username: editingUser.username,
+                role: editingUser.role,
+                passwordPlain: editPassword || null
+            });
+            setIsEditUserOpen(false);
+            setEditPassword("");
+            loadData();
+        } catch (err) {
+            alert("Erro ao atualizar usuário: " + err);
         }
     };
 
@@ -205,8 +278,26 @@ const Configuracoes = () => {
                                         <tr key={m.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4 text-sm font-medium">{m.name}</td>
                                             <td className="px-6 py-4 text-sm text-right">R$ {m.fee.toFixed(2)}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground"
+                                                    onClick={() => {
+                                                        setEditingShipping(m);
+                                                        setIsEditShippingOpen(true);
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4 rotate-45" /> {/* Simulating an edit icon with tilted plus or better just use a generic icon */}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive"
+                                                    onClick={() => handleDeleteShipping(m.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))}
@@ -254,8 +345,26 @@ const Configuracoes = () => {
                                     {paymentMethods.map((m) => (
                                         <tr key={m.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4 text-sm font-medium">{m.name}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground"
+                                                    onClick={() => {
+                                                        setEditingPayment(m);
+                                                        setIsEditPaymentOpen(true);
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4 rotate-45" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive"
+                                                    onClick={() => handleDeletePayment(m.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))}
@@ -348,7 +457,18 @@ const Configuracoes = () => {
                                                     {u.role}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground"
+                                                    onClick={() => {
+                                                        setEditingUser(u);
+                                                        setIsEditUserOpen(true);
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4 rotate-45" />
+                                                </Button>
                                                 {u.username !== "admin" && (
                                                     <Button
                                                         variant="ghost"
@@ -368,6 +488,119 @@ const Configuracoes = () => {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Edit Shipping Dialog */}
+            <Dialog open={isEditShippingOpen} onOpenChange={setIsEditShippingOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Forma de Envio</DialogTitle>
+                    </DialogHeader>
+                    {editingShipping && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Nome</Label>
+                                <Input
+                                    value={editingShipping.name}
+                                    onChange={(e) => setEditingShipping({ ...editingShipping, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Taxa (R$)</Label>
+                                <Input
+                                    type="number"
+                                    value={editingShipping.fee}
+                                    onChange={(e) => setEditingShipping({ ...editingShipping, fee: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={handleUpdateShipping}>Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Payment Dialog */}
+            <Dialog open={isEditPaymentOpen} onOpenChange={setIsEditPaymentOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Forma de Pagamento</DialogTitle>
+                    </DialogHeader>
+                    {editingPayment && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Nome do Método</Label>
+                                <Input
+                                    value={editingPayment.name}
+                                    onChange={(e) => setEditingPayment({ ...editingPayment, name: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={handleUpdatePayment}>Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit User Dialog */}
+            <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Usuário</DialogTitle>
+                        <DialogDescription>Altere os dados do operador. Deixe a senha em branco para manter a atual.</DialogDescription>
+                    </DialogHeader>
+                    {editingUser && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Nome Completo</Label>
+                                <Input
+                                    value={editingUser.name}
+                                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label>Usuário (Login)</Label>
+                                    <Input
+                                        value={editingUser.username}
+                                        disabled={editingUser.username === "admin"}
+                                        onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Nova Senha</Label>
+                                    <Input
+                                        type="password"
+                                        value={editPassword}
+                                        onChange={(e) => setEditPassword(e.target.value)}
+                                        placeholder="Min 6 caracteres"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Cargo / Permissão</Label>
+                                <Select
+                                    value={editingUser.role}
+                                    onValueChange={(val) => setEditingUser({ ...editingUser, role: val })}
+                                    disabled={editingUser.username === "admin"}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="operador">Operador (Apenas Vendas)</SelectItem>
+                                        <SelectItem value="admin">Administrador (Acesso Total)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={handleUpdateUser} className="w-full">Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
