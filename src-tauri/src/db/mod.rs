@@ -34,6 +34,7 @@ async fn setup_schema(db: &DatabaseConnection) -> anyhow::Result<()> {
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::user::Entity).if_not_exists())).await;
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::product::Entity).if_not_exists())).await;
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::shipping_method::Entity).if_not_exists())).await;
+    let _ = db.execute(builder.build(schema.create_table_from_entity(entities::client_gallon::Entity).if_not_exists())).await;
     let _ = db.execute(builder.build(schema.create_table_from_entity(entities::payment_method::Entity).if_not_exists())).await;
 
     // Migração manual: adicionar payment_method se não existir
