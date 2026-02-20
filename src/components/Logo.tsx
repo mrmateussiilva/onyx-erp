@@ -6,7 +6,7 @@ interface LogoProps {
     variant?: "light" | "dark";
 }
 
-export function Logo({ className, showText = true, variant = "dark" }: LogoProps) {
+export function Logo({ className, showText = true, variant }: LogoProps) {
     return (
         <div className={cn("flex items-center gap-3", className)}>
             <svg
