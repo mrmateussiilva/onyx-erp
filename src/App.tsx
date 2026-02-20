@@ -13,6 +13,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UpdateChecker } from "@/components/UpdateChecker";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <UpdateChecker />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />

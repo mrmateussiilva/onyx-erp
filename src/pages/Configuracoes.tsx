@@ -12,6 +12,11 @@ import {
     Shield,
     Lock,
     Pencil,
+    RefreshCw,
+    Download,
+    CheckCircle2,
+    AlertCircle,
+    Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useUpdater } from "@/hooks/use-updater";
 
 interface User {
     id: number;
@@ -84,6 +90,7 @@ const Configuracoes = () => {
     const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
 
     const { ConfirmDialog, confirm: openConfirm } = useConfirm();
+    const updater = useUpdater();
 
     useEffect(() => {
         loadData();
@@ -245,7 +252,7 @@ const Configuracoes = () => {
             </div>
 
             <Tabs defaultValue="envio" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-[500px]">
+                <TabsList className="grid w-full grid-cols-4 max-w-[680px]">
                     <TabsTrigger value="envio" className="gap-2">
                         <Truck className="h-4 w-4" />
                         Fretes
@@ -257,6 +264,10 @@ const Configuracoes = () => {
                     <TabsTrigger value="usuarios" className="gap-2">
                         <Users className="h-4 w-4" />
                         Usuários
+                    </TabsTrigger>
+                    <TabsTrigger value="atualizacoes" className="gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Atualizações
                     </TabsTrigger>
                 </TabsList>
 
@@ -512,6 +523,103 @@ const Configuracoes = () => {
                             </table>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Aba Atualizações */}
+                <TabsContent value="atualizacoes" className="mt-6">
+                    <div className="max-w-2xl space-y-6">
+                        {/* Card de versão atual */}
+                        <Card className="card-shadow border-border/60">
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Info className="h-4 w-4 text-primary" />
+                                    Informações do Sistema
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Versão instalada</span>
+                                    <span className="font-mono font-semibold text-foreground">v0.1.0</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Última verificação</span>
+                                    <span className="text-foreground">
+                                        {updater.lastChecked
+                                            ? updater.lastChecked.toLocaleTimeString("pt-BR")
+                                            : "–"}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Card de status de atualização */}
+                        <Card className="card-shadow border-border/60">
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <RefreshCw className="h-4 w-4 text-primary" />
+                                    Atualizações Disponíveis
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {updater.isChecking ? (
+                                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        Verificando atualizações...
+                                    </div>
+                                ) : updater.updateAvailable && updater.update ? (
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3 rounded-lg bg-primary/10 border border-primary/20 p-4">
+                                            <Download className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    Nova versão: v{updater.update.version}
+                                                </p>
+                                                {updater.update.body && (
+                                                    <p className="text-xs text-muted-foreground whitespace-pre-line">
+                                                        {updater.update.body}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            onClick={() => updater.installUpdate()}
+                                            disabled={updater.isInstalling}
+                                            className="w-full gap-2"
+                                        >
+                                            {updater.isInstalling ? (
+                                                <><RefreshCw className="h-4 w-4 animate-spin" /> Instalando...</>
+                                            ) : (
+                                                <><Download className="h-4 w-4" /> Baixar e Instalar</>
+                                            )}
+                                        </Button>
+                                    </div>
+                                ) : updater.error ? (
+                                    <div className="flex items-center gap-3 rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                                        <p className="text-xs text-destructive">
+                                            Não foi possível verificar atualizações. Verifique sua conexão.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        Você está usando a versão mais recente.
+                                    </div>
+                                )}
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                    onClick={() => updater.checkForUpdates(false)}
+                                    disabled={updater.isChecking || updater.isInstalling}
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${updater.isChecking ? "animate-spin" : ""}`} />
+                                    Verificar Agora
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
 
