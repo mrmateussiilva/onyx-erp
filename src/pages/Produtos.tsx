@@ -31,6 +31,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/components/ui/sonner";
+import { useConfirm } from "@/hooks/use-confirm";
 
 interface Product {
     id: number;
@@ -49,6 +51,12 @@ const Produtos = () => {
     const [prodPrice, setProdPrice] = useState("");
     const [prodStock, setProdStock] = useState("");
     const [prodCategory, setProdCategory] = useState("água");
+
+    // Edit states
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [isEditProductOpen, setIsEditProductOpen] = useState(false);
+
+    const { ConfirmDialog, confirm: openConfirm } = useConfirm();
 
     useEffect(() => {
         loadData();
@@ -74,8 +82,42 @@ const Produtos = () => {
             setIsNewProductOpen(false);
             setProdName(""); setProdPrice(""); setProdStock("");
             loadData();
+            toast.success("Produto cadastrado com sucesso!");
         } catch (err) {
-            alert("Erro ao criar produto: " + err);
+            toast.error("Erro ao criar produto: " + err);
+        }
+    };
+
+    const handleUpdateProduct = async () => {
+        if (!editingProduct) return;
+        try {
+            await invoke("update_product", {
+                id: editingProduct.id,
+                name: editingProduct.name,
+                price: parseFloat(editingProduct.price.toString()),
+                stockQuantity: parseInt(editingProduct.stock_quantity.toString()),
+                category: editingProduct.category
+            });
+            setIsEditProductOpen(false);
+            loadData();
+            toast.success("Produto atualizado com sucesso!");
+        } catch (err) {
+            toast.error("Erro ao atualizar produto: " + err);
+        }
+    };
+
+    const handleDeleteProduct = async (id: number) => {
+        const ok = await openConfirm(
+            "Remover Produto",
+            "Tem certeza que deseja remover este produto do catálogo?"
+        );
+        if (!ok) return;
+        try {
+            await invoke("delete_product", { id });
+            loadData();
+            toast.success("Produto removido!");
+        } catch (err) {
+            toast.error("Erro ao remover produto: " + err);
         }
     };
 
@@ -179,16 +221,29 @@ const Produtos = () => {
                                             R$ {prod.price.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <span className={`text - sm font - bold ${prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground'} `}>
+                                            <span className={`text-sm font-bold ${prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground'}`}>
                                                 {prod.stock_quantity}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    onClick={() => {
+                                                        setEditingProduct(prod);
+                                                        setIsEditProductOpen(true);
+                                                    }}
+                                                >
                                                     <Edit3 className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                    onClick={() => handleDeleteProduct(prod.id)}
+                                                >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -200,6 +255,71 @@ const Produtos = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Edit Product Dialog */}
+            <Dialog open={isEditProductOpen} onOpenChange={setIsEditProductOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Produto</DialogTitle>
+                        <DialogDescription>
+                            Altere as informações do produto no catálogo.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {editingProduct && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-name">Nome do Produto</Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editingProduct.name}
+                                    onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-price">Preço (R$)</Label>
+                                    <Input
+                                        id="edit-price"
+                                        type="number"
+                                        step="0.01"
+                                        value={editingProduct.price}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-stock">Estoque</Label>
+                                    <Input
+                                        id="edit-stock"
+                                        type="number"
+                                        value={editingProduct.stock_quantity}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, stock_quantity: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-category">Categoria</Label>
+                                <Select
+                                    value={editingProduct.category}
+                                    onValueChange={(val) => setEditingProduct({ ...editingProduct, category: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="água">Água</SelectItem>
+                                        <SelectItem value="gás">Gás</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={handleUpdateProduct} className="w-full">Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <ConfirmDialog />
         </div>
     );
 };

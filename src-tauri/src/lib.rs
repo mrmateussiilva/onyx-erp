@@ -337,6 +337,40 @@ async fn create_product(
 }
 
 #[tauri::command]
+async fn update_product(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    name: String,
+    price: f64,
+    stock_quantity: i32,
+    category: String,
+) -> Result<db::entities::product::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut product: db::entities::product::ActiveModel = db::entities::product::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Produto não encontrado")?
+        .into();
+
+    product.name = Set(name);
+    product.price = Set(price);
+    product.stock_quantity = Set(stock_quantity);
+    product.category = Set(category);
+    product.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_product(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    use sea_orm::EntityTrait;
+    db::entities::product::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 async fn create_user(
     db: State<'_, DatabaseConnection>,
     username: String,
@@ -575,6 +609,8 @@ pub fn run() {
         login,
         get_products,
         create_product,
+        update_product,
+        delete_product,
         create_user,
         update_user,
         get_users,

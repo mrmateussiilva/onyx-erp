@@ -11,6 +11,7 @@ import {
     UserPlus,
     Shield,
     Lock,
+    Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/components/ui/sonner";
+import { useConfirm } from "@/hooks/use-confirm";
 
 interface User {
     id: number;
@@ -80,6 +83,8 @@ const Configuracoes = () => {
     const [isEditShippingOpen, setIsEditShippingOpen] = useState(false);
     const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
 
+    const { ConfirmDialog, confirm: openConfirm } = useConfirm();
+
     useEffect(() => {
         loadData();
     }, []);
@@ -110,18 +115,24 @@ const Configuracoes = () => {
             setIsNewUserOpen(false);
             setUserName(""); setUserUsername(""); setUserPassword(""); setUserRole("operador");
             loadData();
+            toast.success("Usuário criado com sucesso!");
         } catch (err) {
-            alert("Erro ao criar usuário: " + err);
+            toast.error("Erro ao criar usuário: " + err);
         }
     };
 
     const handleDeleteUser = async (id: number) => {
-        if (!confirm("Tem certeza que deseja remover este usuário?")) return;
+        const ok = await openConfirm(
+            "Remover Usuário",
+            "Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita."
+        );
+        if (!ok) return;
         try {
             await invoke("delete_user", { id });
             loadData();
+            toast.success("Usuário removido com sucesso!");
         } catch (err) {
-            alert("Erro ao remover usuário: " + err);
+            toast.error("Erro ao remover usuário: " + err);
         }
     };
 
@@ -131,8 +142,9 @@ const Configuracoes = () => {
             setIsNewShippingOpen(false);
             setShipName(""); setShipFee("");
             loadData();
+            toast.success("Forma de envio criada!");
         } catch (err) {
-            alert("Erro ao criar forma de envio: " + err);
+            toast.error("Erro ao criar forma de envio: " + err);
         }
     };
 
@@ -142,8 +154,9 @@ const Configuracoes = () => {
             setIsNewPaymentOpen(false);
             setPayName("");
             loadData();
+            toast.success("Forma de pagamento criada!");
         } catch (err) {
-            alert("Erro ao criar forma de pagamento: " + err);
+            toast.error("Erro ao criar forma de pagamento: " + err);
         }
     };
 
@@ -157,18 +170,24 @@ const Configuracoes = () => {
             });
             setIsEditShippingOpen(false);
             loadData();
+            toast.success("Frete atualizado!");
         } catch (err) {
-            alert("Erro ao atualizar frete: " + err);
+            toast.error("Erro ao atualizar frete: " + err);
         }
     };
 
     const handleDeleteShipping = async (id: number) => {
-        if (!confirm("Tem certeza que deseja remover este frete?")) return;
+        const ok = await openConfirm(
+            "Remover Frete",
+            "Tem certeza que deseja remover esta forma de envio?"
+        );
+        if (!ok) return;
         try {
             await invoke("delete_shipping_method", { id });
             loadData();
+            toast.success("Frete removido!");
         } catch (err) {
-            alert("Erro ao remover frete: " + err);
+            toast.error("Erro ao remover frete: " + err);
         }
     };
 
@@ -178,18 +197,24 @@ const Configuracoes = () => {
             await invoke("update_payment_method", { id: editingPayment.id, name: editingPayment.name });
             setIsEditPaymentOpen(false);
             loadData();
+            toast.success("Pagamento atualizado!");
         } catch (err) {
-            alert("Erro ao atualizar pagamento: " + err);
+            toast.error("Erro ao atualizar pagamento: " + err);
         }
     };
 
     const handleDeletePayment = async (id: number) => {
-        if (!confirm("Tem certeza que deseja remover este pagamento?")) return;
+        const ok = await openConfirm(
+            "Remover Pagamento",
+            "Tem certeza que deseja remover esta forma de pagamento?"
+        );
+        if (!ok) return;
         try {
             await invoke("delete_payment_method", { id });
             loadData();
+            toast.success("Pagamento removido!");
         } catch (err) {
-            alert("Erro ao remover pagamento: " + err);
+            toast.error("Erro ao remover pagamento: " + err);
         }
     };
 
@@ -206,8 +231,9 @@ const Configuracoes = () => {
             setIsEditUserOpen(false);
             setEditPassword("");
             loadData();
+            toast.success("Usuário atualizado com sucesso!");
         } catch (err) {
-            alert("Erro ao atualizar usuário: " + err);
+            toast.error("Erro ao atualizar usuário: " + err);
         }
     };
 
@@ -288,7 +314,7 @@ const Configuracoes = () => {
                                                         setIsEditShippingOpen(true);
                                                     }}
                                                 >
-                                                    <Plus className="h-4 w-4 rotate-45" /> {/* Simulating an edit icon with tilted plus or better just use a generic icon */}
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -355,7 +381,7 @@ const Configuracoes = () => {
                                                         setIsEditPaymentOpen(true);
                                                     }}
                                                 >
-                                                    <Plus className="h-4 w-4 rotate-45" />
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -467,7 +493,7 @@ const Configuracoes = () => {
                                                         setIsEditUserOpen(true);
                                                     }}
                                                 >
-                                                    <Plus className="h-4 w-4 rotate-45" />
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
                                                 {u.username !== "admin" && (
                                                     <Button
@@ -601,6 +627,8 @@ const Configuracoes = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmDialog />
         </div>
     );
 };

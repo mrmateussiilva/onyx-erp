@@ -29,6 +29,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { toast } from "@/components/ui/sonner";
 
 interface Client {
   id: number;
@@ -59,8 +60,14 @@ const Clientes = () => {
     loadClients();
   }, []);
 
+  useEffect(() => {
+    if (selectedId) {
+      loadDetails();
+    }
+  }, [selectedId]);
+
   const handleCreateClient = async () => {
-    if (!name) return alert("O nome é obrigatório");
+    if (!name) return toast.error("O nome é obrigatório");
     try {
       await invoke("create_client", {
         name,
@@ -70,8 +77,9 @@ const Clientes = () => {
       setIsDialogOpen(false);
       setName(""); setPhone(""); setAddress("");
       loadClients();
+      toast.success("Cliente cadastrado com sucesso!");
     } catch (error) {
-      alert("Erro ao cadastrar cliente: " + error);
+      toast.error("Erro ao cadastrar cliente: " + error);
     }
   };
 
@@ -128,9 +136,6 @@ const Clientes = () => {
 
       if (data.length > 0 && selectedId === null) {
         setSelectedId(data[0].id);
-      } else if (selectedId) {
-        // Se já temos um selecionado, forçamos o recarregamento dos detalhes
-        loadDetails();
       }
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
@@ -329,31 +334,41 @@ const Clientes = () => {
               </TabsContent>
 
               <TabsContent value="historico" className="mt-4">
-                <div className="rounded-lg border border-border/60 overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-muted/50 text-left">
-                        <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Data</th>
-                        <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Itens</th>
-                        <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Pagamento</th>
-                        <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {selected.historico.map((h, i) => (
-                        <tr key={i} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-2.5 text-sm flex items-center gap-1.5">
-                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                            {h.data}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm">{h.items}</td>
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{h.pagamento}</td>
-                          <td className="px-4 py-2.5 text-sm font-semibold text-right">{h.total}</td>
+                {!selected.historico || selected.historico.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 rounded-lg border border-dashed border-border/60 text-center">
+                    <History className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-sm font-medium text-muted-foreground">Nenhuma compra registrada</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">O histórico de pedidos aparecerá aqui</p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border/60 overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted/50 text-left">
+                          <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Data</th>
+                          <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Itens</th>
+                          <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">Pagamento</th>
+                          <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground text-right">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {selected.historico.map((h, i) => (
+                          <tr key={i} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-2.5 text-sm">
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                {h.data}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-sm">{h.items}</td>
+                            <td className="px-4 py-2.5 text-sm text-muted-foreground">{h.pagamento}</td>
+                            <td className="px-4 py-2.5 text-sm font-semibold text-right text-primary">{h.total}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="galoes" className="mt-4">
@@ -380,10 +395,17 @@ const Clientes = () => {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={async (e) => {
-                          const brand = (document.getElementById('brand') as HTMLInputElement).value;
-                          const expDate = (document.getElementById('exp_date') as HTMLInputElement).value;
-                          if (!brand || !expDate) return;
+                        <Button onClick={async () => {
+                          const brandElement = document.getElementById('brand') as HTMLInputElement;
+                          const expDateElement = document.getElementById('exp_date') as HTMLInputElement;
+                          const brand = brandElement.value;
+                          const expDate = expDateElement.value;
+
+                          if (!brand || !expDate) {
+                            toast.error("Preencha todos os campos");
+                            return;
+                          }
+
                           try {
                             await invoke("add_client_gallon", {
                               clientId: selectedId,
@@ -391,9 +413,12 @@ const Clientes = () => {
                               expirationDate: new Date(expDate).toISOString()
                             });
                             loadDetails();
-                            alert("Galão registrado com sucesso!");
+                            toast.success("Galão registrado com sucesso!");
+                            // Limpar campos
+                            brandElement.value = "";
+                            expDateElement.value = "";
                           } catch (err) {
-                            alert(err);
+                            toast.error(String(err));
                           }
                         }}>Salvar Galão</Button>
                       </DialogFooter>

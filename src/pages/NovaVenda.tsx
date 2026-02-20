@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/components/ui/sonner";
 
 interface Client {
   id: number;
@@ -225,7 +226,7 @@ const NovaVenda = () => {
         handlePrint();
       }
 
-      alert("Venda realizada com sucesso!");
+      toast.success("Venda realizada com sucesso!");
       setCart([]);
       setSelectedClient(null);
       setClientSearch("");
@@ -233,7 +234,7 @@ const NovaVenda = () => {
       setSelectedShipping("");
     } catch (error) {
       console.error("Erro ao salvar venda:", error);
-      alert("Erro ao salvar venda.");
+      toast.error("Erro ao salvar venda.");
     }
   };
 
