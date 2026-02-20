@@ -17,6 +17,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { Logo } from "./Logo";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,15 +85,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           "flex h-20 items-center border-b border-sidebar-hover transition-all duration-300",
           isCollapsed ? "px-0 justify-center" : "px-6"
         )}>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 shrink-0">
-            <Gem className="h-6 w-6 text-primary-foreground" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col ml-3 animate-in fade-in slide-in-from-left-2 duration-300">
-              <span className="text-base font-bold text-sidebar-fg-active leading-tight tracking-tight">Onyx ERP</span>
-              <span className="text-xs text-sidebar-fg leading-tight opacity-70">Soluções Corporativas</span>
-            </div>
-          )}
+          <Logo showText={!isCollapsed} />
         </div>
 
         {/* Nav */}
