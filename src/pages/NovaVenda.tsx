@@ -6,7 +6,7 @@ import {
   Trash2,
   Printer,
   Save,
-  Droplets,
+  Gem,
   Flame,
   User,
 } from "lucide-react";
@@ -320,7 +320,7 @@ const NovaVenda = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
                 {products.map((product) => {
-                  const Icon = product.category === "gás" ? Flame : Droplets;
+                  const Icon = product.category === "gás" ? Flame : Gem;
                   return (
                     <button
                       key={product.id}
