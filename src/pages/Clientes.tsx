@@ -230,9 +230,9 @@ const Clientes = () => {
                 <button
                   key={client.id}
                   onClick={() => setSelectedId(client.id)}
-                  className={`flex w - full items - center gap - 3 rounded - lg px - 3 py - 2.5 text - left transition - colors ${selectedId === client.id
-                      ? "bg-primary/10 border border-primary/20"
-                      : "hover:bg-muted"
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${selectedId === client.id
+                    ? "bg-primary/10 border border-primary/20"
+                    : "hover:bg-muted"
                     } `}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
@@ -362,7 +362,7 @@ const Clientes = () => {
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline" className="h-8 gap-1">
-                        <Droplets className="h-3.5 w-3.5" /> Adicionar Galão
+                        <Gem className="h-3.5 w-3.5" /> Adicionar Galão
                       </Button>
                     </DialogTrigger>
                     <DialogContent>

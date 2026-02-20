@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { Droplets, Lock, User, Loader2 } from "lucide-react";
+import { Gem, Lock, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -97,7 +97,7 @@ const Login = () => {
                         </Button>
                     </form>
                     <div className="mt-6 text-center text-xs text-muted-foreground">
-                        AquaGás Flow v1.0.0 • Gerenciamento Simplificado
+                        Onyx ERP v1.0.0 • Gerenciamento Corporativo
                     </div>
                 </CardContent>
             </Card>
