@@ -41,7 +41,9 @@ export function Logo({ className, showText = true, variant = "dark" }: LogoProps
                 <div className="flex flex-col leading-none items-start">
                     <span className={cn(
                         "text-xl font-bold tracking-[0.1em] uppercase",
-                        variant === "dark" ? "text-white" : "text-foreground"
+                        variant === "dark" ? "text-white" :
+                            variant === "light" ? "text-foreground" :
+                                "text-foreground dark:text-white"
                     )}>
                         Onyx
                     </span>
