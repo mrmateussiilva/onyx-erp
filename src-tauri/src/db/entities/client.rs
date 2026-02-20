@@ -8,7 +8,12 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub phone: Option<String>,
+    pub document: Option<String>, // CPF ou CNPJ
+    pub cep: Option<String>,
+    pub city: Option<String>,
+    pub state: Option<String>,
     pub address: Option<String>,
+    pub observations: Option<String>,
     pub created_at: DateTimeUtc,
 }
 

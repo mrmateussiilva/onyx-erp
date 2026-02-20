@@ -38,7 +38,12 @@ async fn create_client(
     db: State<'_, DatabaseConnection>,
     name: String,
     phone: Option<String>,
+    document: Option<String>,
+    cep: Option<String>,
+    city: Option<String>,
+    state: Option<String>,
     address: Option<String>,
+    observations: Option<String>,
 ) -> Result<db::entities::client::Model, String> {
     use sea_orm::{ActiveModelTrait, Set};
     use chrono::Utc;
@@ -46,7 +51,12 @@ async fn create_client(
     let client = db::entities::client::ActiveModel {
         name: Set(name),
         phone: Set(phone),
+        document: Set(document),
+        cep: Set(cep),
+        city: Set(city),
+        state: Set(state),
         address: Set(address),
+        observations: Set(observations),
         created_at: Set(Utc::now().into()),
         ..Default::default()
     };
@@ -55,33 +65,154 @@ async fn create_client(
 }
 
 #[tauri::command]
+async fn update_client(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    name: String,
+    phone: Option<String>,
+    document: Option<String>,
+    cep: Option<String>,
+    city: Option<String>,
+    state: Option<String>,
+    address: Option<String>,
+    observations: Option<String>,
+) -> Result<db::entities::client::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    
+    let mut client: db::entities::client::ActiveModel = db::entities::client::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Cliente não encontrado")?
+        .into();
+
+    client.name = Set(name);
+    client.phone = Set(phone);
+    client.document = Set(document);
+    client.cep = Set(cep);
+    client.city = Set(city);
+    client.state = Set(state);
+    client.address = Set(address);
+    client.observations = Set(observations);
+
+    client.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn get_dashboard_stats(db: State<'_, DatabaseConnection>) -> Result<serde_json::Value, String> {
-    use sea_orm::{EntityTrait, PaginatorTrait, QuerySelect};
-    use chrono::Utc;
+    use sea_orm::{EntityTrait, PaginatorTrait, QueryFilter, ColumnTrait};
+    use chrono::{Utc, Duration};
 
-    let today = Utc::now().date_naive();
+    let now = Utc::now();
+    let today_start = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_local_timezone(Utc).unwrap();
+    let yesterday_start = today_start - Duration::days(1);
 
-    // Total de vendas hoje (exemplo simplificado)
+    // Vendas hoje
     let sales_today = db::entities::sale::Entity::find()
-        // .filter(db::entities::sale::Column::CreatedAt.gte(start_of_day)) // Precisaria configurar o filtro
+        .filter(db::entities::sale::Column::CreatedAt.gte(today_start))
         .all(db.inner())
         .await
         .map_err(|e| e.to_string())?;
 
-    let total_revenue: f64 = sales_today.iter().map(|s| s.total).sum();
-    let sales_count = sales_today.len();
-    
+    let revenue_today: f64 = sales_today.iter().map(|s| s.total).sum();
+    let count_today = sales_today.len();
+
+    // Vendas ontem
+    let sales_yesterday = db::entities::sale::Entity::find()
+        .filter(db::entities::sale::Column::CreatedAt.between(yesterday_start, today_start))
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let revenue_yesterday: f64 = sales_yesterday.iter().map(|s| s.total).sum();
+    let count_yesterday = sales_yesterday.len();
+
     let client_count = db::entities::client::Entity::find()
         .count(db.inner())
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
 
+    // Alertas (Estoque baixo < 10 + Galões vencendo em 30 dias)
+    let low_stock_count = db::entities::product::Entity::find()
+        .filter(db::entities::product::Column::StockQuantity.lt(10))
+        .count(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let expiring_gallons_count = db::entities::client_gallon::Entity::find()
+        .filter(db::entities::client_gallon::Column::ExpirationDate.between(now, now + Duration::days(30)))
+        .count(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_alerts = low_stock_count + expiring_gallons_count;
+
+    let calc_change_pct = |curr: f64, prev: f64| -> String {
+        if prev == 0.0 { return if curr > 0.0 { "+100%".into() } else { "0%".into() }; }
+        let change = ((curr - prev) / prev) * 100.0;
+        format!("{}{:.0}%", if change >= 0.0 { "+" } else { "" }, change)
+    };
+
+    let calc_change_abs = |curr: usize, prev: usize| -> String {
+        let diff = (curr as i32) - (prev as i32);
+        format!("{}{}", if diff >= 0 { "+" } else { "" }, diff)
+    };
+
     Ok(serde_json::json!({
-        "revenue": format!("R$ {:.2}", total_revenue),
-        "sales_count": sales_count,
+        "revenue": format!("R$ {:.2}", revenue_today),
+        "revenue_change": calc_change_pct(revenue_today, revenue_yesterday),
+        "sales_count": count_today,
+        "sales_change": calc_change_abs(count_today, count_yesterday),
         "client_count": client_count,
-        "alerts": 0 // Placeholder por enquanto
+        "client_change": format!("+{}", client_count),
+        "alerts": total_alerts
     }))
+}
+
+#[tauri::command]
+async fn get_popular_products(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::product::Model>, String> {
+    use sea_orm::{EntityTrait, QueryOrder, QuerySelect};
+    db::entities::product::Entity::find()
+        .order_by_desc(db::entities::product::Column::StockQuantity)
+        .limit(4)
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_expiring_gallons(db: State<'_, DatabaseConnection>) -> Result<serde_json::Value, String> {
+    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, QueryOrder};
+    use chrono::Utc;
+
+    let now = Utc::now();
+    let month_away = now + chrono::Duration::days(30);
+
+    let gallons = db::entities::client_gallon::Entity::find()
+        .filter(db::entities::client_gallon::Column::ExpirationDate.between(now, month_away))
+        .order_by_asc(db::entities::client_gallon::Column::ExpirationDate)
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for g in gallons {
+        let client_name = db::entities::client::Entity::find_by_id(g.client_id)
+            .one(db.inner())
+            .await
+            .unwrap_or(None)
+            .map(|c| c.name)
+            .unwrap_or_else(|| "Cliente desconhecido".to_string());
+        
+        result.push(serde_json::json!({
+            "id": g.id,
+            "client_name": client_name,
+            "brand": g.brand,
+            "expiration_date": g.expiration_date
+        }));
+    }
+
+    Ok(serde_json::json!(result))
 }
 
 #[tauri::command]
@@ -324,6 +455,7 @@ async fn create_product(
     price: f64,
     stock_quantity: i32,
     category: String,
+    category_id: Option<i32>,
 ) -> Result<db::entities::product::Model, String> {
     use sea_orm::{ActiveModelTrait, Set};
     let product = db::entities::product::ActiveModel {
@@ -331,6 +463,7 @@ async fn create_product(
         price: Set(price),
         stock_quantity: Set(stock_quantity),
         category: Set(category),
+        category_id: Set(category_id),
         ..Default::default()
     };
     product.insert(db.inner()).await.map_err(|e| e.to_string())
@@ -344,6 +477,7 @@ async fn update_product(
     price: f64,
     stock_quantity: i32,
     category: String,
+    category_id: Option<i32>,
 ) -> Result<db::entities::product::Model, String> {
     use sea_orm::{ActiveModelTrait, Set, EntityTrait};
     let mut product: db::entities::product::ActiveModel = db::entities::product::Entity::find_by_id(id)
@@ -357,6 +491,7 @@ async fn update_product(
     product.price = Set(price);
     product.stock_quantity = Set(stock_quantity);
     product.category = Set(category);
+    product.category_id = Set(category_id);
     product.update(db.inner()).await.map_err(|e| e.to_string())
 }
 
@@ -364,6 +499,60 @@ async fn update_product(
 async fn delete_product(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
     use sea_orm::EntityTrait;
     db::entities::product::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_categories(db: State<'_, DatabaseConnection>) -> Result<Vec<db::entities::category::Model>, String> {
+    use sea_orm::EntityTrait;
+    db::entities::category::Entity::find()
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_category(
+    db: State<'_, DatabaseConnection>,
+    name: String,
+    description: Option<String>,
+) -> Result<db::entities::category::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set};
+    let category = db::entities::category::ActiveModel {
+        name: Set(name),
+        description: Set(description),
+        ..Default::default()
+    };
+    category.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_category(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    name: String,
+    description: Option<String>,
+) -> Result<db::entities::category::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut category: db::entities::category::ActiveModel = db::entities::category::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Categoria não encontrada")?
+        .into();
+
+    category.name = Set(name);
+    category.description = Set(description);
+    category.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_category(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    use sea_orm::EntityTrait;
+    db::entities::category::Entity::delete_by_id(id)
         .exec(db.inner())
         .await
         .map_err(|e| e.to_string())?;
@@ -602,6 +791,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
         get_clients, 
         create_client, 
+        update_client,
         seed_db, 
         get_dashboard_stats, 
         get_recent_sales,
@@ -625,7 +815,13 @@ pub fn run() {
         update_payment_method,
         delete_payment_method,
         get_client_details,
-        add_client_gallon
+        add_client_gallon,
+        get_categories,
+        create_category,
+        update_category,
+        delete_category,
+        get_popular_products,
+        get_expiring_gallons
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
