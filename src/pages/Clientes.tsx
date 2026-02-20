@@ -30,14 +30,19 @@ import {
 } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "@/components/ui/sonner";
+import { maskCEP, maskCPFCNPJ, maskPhone } from "@/lib/utils/masks";
 
 interface Client {
   id: number;
   name: string;
   phone: string | null;
+  document: string | null;
+  cep: string | null;
+  city: string | null;
+  state: string | null;
   address: string | null;
+  observations: string | null;
   created_at: string;
-  // Temporariamente mockados enquanto não criamos as tabelas relacionadas
   since?: string;
   totalPedidos?: number;
   galoes?: any[];
@@ -52,13 +57,50 @@ const Clientes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Form states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [document, setDocument] = useState("");
+  const [cep, setCep] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [address, setAddress] = useState("");
+  const [observations, setObservations] = useState("");
 
   useEffect(() => {
     loadClients();
   }, []);
+
+  const handleCEPChange = async (value: string) => {
+    const formatted = maskCEP(value);
+    setCep(formatted);
+
+    const pureCEP = formatted.replace(/\D/g, "");
+    if (pureCEP.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${pureCEP}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+          toast.error("CEP não encontrado");
+          return;
+        }
+
+        setCity(data.localidade || "");
+        setState(data.uf || "");
+        if (data.logradouro) {
+          setAddress(prev => {
+            const complement = data.bairro ? `, ${data.bairro}` : "";
+            return `${data.logradouro}${complement}`;
+          });
+        }
+        toast.success("Endereço preenchido automaticamente!");
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (selectedId) {
@@ -66,21 +108,61 @@ const Clientes = () => {
     }
   }, [selectedId]);
 
-  const handleCreateClient = async () => {
+  const handleSaveClient = async () => {
     if (!name) return toast.error("O nome é obrigatório");
     try {
-      await invoke("create_client", {
+      const payload = {
         name,
         phone: phone || null,
-        address: address || null
-      });
+        document: document || null,
+        cep: cep || null,
+        city: city || null,
+        state: state || null,
+        address: address || null,
+        observations: observations || null,
+      };
+
+      if (isEditing && editingId) {
+        await invoke("update_client", { id: editingId, ...payload });
+        toast.success("Cliente atualizado com sucesso!");
+      } else {
+        await invoke("create_client", payload);
+        toast.success("Cliente cadastrado com sucesso!");
+      }
+
       setIsDialogOpen(false);
-      setName(""); setPhone(""); setAddress("");
+      resetForm();
       loadClients();
-      toast.success("Cliente cadastrado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao cadastrar cliente: " + error);
+      toast.error("Erro ao salvar cliente: " + error);
     }
+  };
+
+  const resetForm = () => {
+    setIsEditing(false);
+    setEditingId(null);
+    setName("");
+    setPhone("");
+    setDocument("");
+    setCep("");
+    setCity("");
+    setState("");
+    setAddress("");
+    setObservations("");
+  };
+
+  const handleEditClick = (client: Client) => {
+    setIsEditing(true);
+    setEditingId(client.id);
+    setName(client.name || "");
+    setPhone(client.phone || "");
+    setDocument(client.document || "");
+    setCep(client.cep || "");
+    setCity(client.city || "");
+    setState(client.state || "");
+    setAddress(client.address || "");
+    setObservations(client.observations || "");
+    setIsDialogOpen(true);
   };
 
   const loadDetails = async () => {
@@ -166,22 +248,25 @@ const Clientes = () => {
           <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
           <p className="text-sm text-muted-foreground">{clients.length} clientes cadastrados</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
-            <Button className="gap-1.5">
+            <Button className="gap-1.5" onClick={() => setIsEditing(false)}>
               <UserPlus className="h-4 w-4" />
               Novo Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Cliente" : "Cadastrar Novo Cliente"}</DialogTitle>
               <DialogDescription>
-                Insira as informações básicas para o novo cadastro.
+                {isEditing ? "Altere as informações do cliente abaixo." : "Insira as informações detalhadas para o novo cadastro."}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+            <div className="grid gap-4 py-4 sm:grid-cols-2">
+              <div className="grid gap-2 sm:col-span-2">
                 <Label htmlFor="name">Nome Completo</Label>
                 <Input
                   id="name"
@@ -191,16 +276,34 @@ const Clientes = () => {
                 />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="document">CPF ou CNPJ</Label>
+                <Input
+                  id="document"
+                  value={document}
+                  onChange={(e) => setDocument(maskCPFCNPJ(e.target.value))}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="phone">Telefone / WhatsApp</Label>
                 <Input
                   id="phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(maskPhone(e.target.value))}
                   placeholder="(00) 00000-0000"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="address">Endereço de Entrega</Label>
+                <Label htmlFor="cep">CEP</Label>
+                <Input
+                  id="cep"
+                  value={cep}
+                  onChange={(e) => handleCEPChange(e.target.value)}
+                  placeholder="00000-000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Endereço</Label>
                 <Input
                   id="address"
                   value={address}
@@ -208,10 +311,38 @@ const Clientes = () => {
                   placeholder="Rua, Número, Bairro..."
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Nome da cidade"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="state">Estado (UF)</Label>
+                <Input
+                  id="state"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="Ex: SP"
+                  maxLength={2}
+                />
+              </div>
+              <div className="grid gap-2 sm:col-span-2">
+                <Label htmlFor="observations">Observações</Label>
+                <Input
+                  id="observations"
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  placeholder="Informações adicionais..."
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCreateClient}>Salvar Cliente</Button>
+              <Button onClick={handleSaveClient}>{isEditing ? "Salvar Alterações" : "Salvar Cliente"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -266,7 +397,7 @@ const Clientes = () => {
                   <p className="text-xs text-muted-foreground">Cliente desde {selected.since}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => handleEditClick(selected as Client)}>
                 Editar
               </Button>
             </div>
@@ -310,24 +441,32 @@ const Clientes = () => {
                     </div>
                   ))}
                 </div>
-                <div className="rounded-lg border border-border/60 p-4 space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Informações</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-border/60 p-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Informações Cadastrais</h3>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
                     <div>
-                      <p className="text-xs text-muted-foreground">Telefone</p>
-                      <p className="font-medium">{selected.phone}</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">CPF / CNPJ</p>
+                      <p className="font-medium">{selected.document || "Não informado"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Endereço</p>
-                      <p className="font-medium">{selected.address}</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">Telefone</p>
+                      <p className="font-medium">{selected.phone || "Não informado"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Cliente desde</p>
-                      <p className="font-medium">{selected.since}</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">CEP</p>
+                      <p className="font-medium">{selected.cep || "Não informado"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Total de Pedidos</p>
-                      <p className="font-medium">{selected.totalPedidos}</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">Cidade / UF</p>
+                      <p className="font-medium">{selected.city && selected.state ? `${selected.city} - ${selected.state}` : selected.city || selected.state || "Não informado"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Endereço Completo</p>
+                      <p className="font-medium">{selected.address || "Não informado"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Observações</p>
+                      <p className="font-medium text-xs leading-relaxed italic">{selected.observations || "Sem observações"}</p>
                     </div>
                   </div>
                 </div>
