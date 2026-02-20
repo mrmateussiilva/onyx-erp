@@ -1,4 +1,3 @@
-```
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -181,7 +180,7 @@ const Produtos = () => {
                                             R$ {prod.price.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <span className={`text - sm font - bold ${ prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground' } `}>
+                                            <span className={`text - sm font - bold ${prod.stock_quantity < 10 ? 'text-destructive' : 'text-foreground'} `}>
                                                 {prod.stock_quantity}
                                             </span>
                                         </td>

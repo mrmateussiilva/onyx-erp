@@ -1,4 +1,3 @@
-```javascript
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -94,7 +93,7 @@ const Clientes = () => {
             data: new Date(h.created_at).toLocaleDateString('pt-BR'),
             items: h.items,
             pagamento: h.payment_method || "Não informado", // Confirmando snake_case
-            total: `R$ ${ h.total.toFixed(2) } `
+            total: `R$ ${h.total.toFixed(2)} `
           })),
           galoes: details.galoes.map((g: any) => ({
             id: g.id,
@@ -231,11 +230,10 @@ const Clientes = () => {
                 <button
                   key={client.id}
                   onClick={() => setSelectedId(client.id)}
-                  className={`flex w - full items - center gap - 3 rounded - lg px - 3 py - 2.5 text - left transition - colors ${
-  selectedId === client.id
-  ? "bg-primary/10 border border-primary/20"
-  : "hover:bg-muted"
-} `}
+                  className={`flex w - full items - center gap - 3 rounded - lg px - 3 py - 2.5 text - left transition - colors ${selectedId === client.id
+                      ? "bg-primary/10 border border-primary/20"
+                      : "hover:bg-muted"
+                    } `}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                     {client.name.charAt(0)}
@@ -414,7 +412,7 @@ const Clientes = () => {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">
-                            {g.brand ? `${ g.brand } (#${ g.id })` : `Galão #${ g.id } `}
+                            {g.brand ? `${g.brand} (#${g.id})` : `Galão #${g.id} `}
                           </p>
                           <p className="text-xs text-muted-foreground">Vencimento: {g.vencimento}</p>
                         </div>
