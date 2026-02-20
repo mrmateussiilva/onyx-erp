@@ -321,7 +321,7 @@ const NovaVenda = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
                 {products.map((product) => {
-                  const Icon = product.category === "gás" ? Flame : Gem;
+                  const Icon = product.category.toLowerCase().includes("gás") ? Flame : Gem;
                   return (
                     <button
                       key={product.id}

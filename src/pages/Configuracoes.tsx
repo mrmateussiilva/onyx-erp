@@ -17,6 +17,7 @@ import {
     CheckCircle2,
     AlertCircle,
     Info,
+    Tags,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,33 +62,47 @@ interface PaymentMethod {
     name: string;
 }
 
+interface Category {
+    id: number;
+    name: string;
+    description: string | null;
+}
+
 const Configuracoes = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
 
     const [isNewShippingOpen, setIsNewShippingOpen] = useState(false);
     const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
     const [isNewUserOpen, setIsNewUserOpen] = useState(false);
+    const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
 
     const [shipName, setShipName] = useState("");
     const [shipFee, setShipFee] = useState("");
     const [payName, setPayName] = useState("");
+    const [catName, setCatName] = useState("");
+    const [catDesc, setCatDesc] = useState("");
+    const [catSearch, setCatSearch] = useState("");
 
     // User Form
     const [userName, setUserName] = useState("");
     const [userUsername, setUserUsername] = useState("");
     const [userPassword, setUserPassword] = useState("");
+    const [userSearch, setUserSearch] = useState("");
     const [userRole, setUserRole] = useState("operador");
 
     // Edit States
     const [editingShipping, setEditingShipping] = useState<ShippingMethod | null>(null);
     const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [editPassword, setEditPassword] = useState("");
     const [isEditUserOpen, setIsEditUserOpen] = useState(false);
     const [isEditShippingOpen, setIsEditShippingOpen] = useState(false);
     const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
+    const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
 
     const { ConfirmDialog, confirm: openConfirm } = useConfirm();
     const updater = useUpdater();
@@ -98,14 +113,16 @@ const Configuracoes = () => {
 
     const loadData = async () => {
         try {
-            const [s, pay, u] = await Promise.all([
+            const [s, pay, u, c] = await Promise.all([
                 invoke<ShippingMethod[]>("get_shipping_methods"),
                 invoke<PaymentMethod[]>("get_payment_methods"),
-                invoke<User[]>("get_users")
+                invoke<User[]>("get_users"),
+                invoke<Category[]>("get_categories")
             ]);
             setShippingMethods(s);
             setPaymentMethods(pay);
             setUsers(u);
+            setCategories(c);
         } catch (err) {
             console.error(err);
         }
@@ -167,6 +184,18 @@ const Configuracoes = () => {
         }
     };
 
+    const handleCreateCategory = async () => {
+        try {
+            await invoke("create_category", { name: catName, description: catDesc || null });
+            setIsNewCategoryOpen(false);
+            setCatName(""); setCatDesc("");
+            loadData();
+            toast.success("Categoria criada com sucesso!");
+        } catch (err) {
+            toast.error("Erro ao criar categoria: " + err);
+        }
+    };
+
     const handleUpdateShipping = async () => {
         if (!editingShipping) return;
         try {
@@ -225,6 +254,37 @@ const Configuracoes = () => {
         }
     };
 
+    const handleUpdateCategory = async () => {
+        if (!editingCategory) return;
+        try {
+            await invoke("update_category", {
+                id: editingCategory.id,
+                name: editingCategory.name,
+                description: editingCategory.description
+            });
+            setIsEditCategoryOpen(false);
+            loadData();
+            toast.success("Categoria atualizada!");
+        } catch (err) {
+            toast.error("Erro ao atualizar categoria: " + err);
+        }
+    };
+
+    const handleDeleteCategory = async (id: number) => {
+        const ok = await openConfirm(
+            "Remover Categoria",
+            "Tem certeza que deseja remover esta categoria?"
+        );
+        if (!ok) return;
+        try {
+            await invoke("delete_category", { id });
+            loadData();
+            toast.success("Categoria removida!");
+        } catch (err) {
+            toast.error("Erro ao remover categoria: " + err);
+        }
+    };
+
     const handleUpdateUser = async () => {
         if (!editingUser) return;
         try {
@@ -252,7 +312,7 @@ const Configuracoes = () => {
             </div>
 
             <Tabs defaultValue="envio" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-[680px]">
+                <TabsList className="grid w-full grid-cols-5 max-w-[850px]">
                     <TabsTrigger value="envio" className="gap-2">
                         <Truck className="h-4 w-4" />
                         Fretes
@@ -260,6 +320,10 @@ const Configuracoes = () => {
                     <TabsTrigger value="pagamento" className="gap-2">
                         <CreditCard className="h-4 w-4" />
                         Pagamentos
+                    </TabsTrigger>
+                    <TabsTrigger value="categorias" className="gap-2">
+                        <Tags className="h-4 w-4" />
+                        Categorias
                     </TabsTrigger>
                     <TabsTrigger value="usuarios" className="gap-2">
                         <Users className="h-4 w-4" />
@@ -411,11 +475,102 @@ const Configuracoes = () => {
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="categorias" className="mt-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar categoria..."
+                                className="pl-9 h-9 text-xs"
+                                value={catSearch}
+                                onChange={(e) => setCatSearch(e.target.value)}
+                            />
+                        </div>
+                        <Dialog open={isNewCategoryOpen} onOpenChange={setIsNewCategoryOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Nova Categoria
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Nova Categoria</DialogTitle>
+                                    <DialogDescription>Crie uma nova classificação para seus produtos.</DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                        <Label>Nome da Categoria</Label>
+                                        <Input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Ex: Bebidas" />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Descrição (Opcional)</Label>
+                                        <Input value={catDesc} onChange={(e) => setCatDesc(e.target.value)} placeholder="Ex: Todos os tipos de bebidas" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleCreateCategory}>Criar Categoria</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                    <Card className="card-shadow border-border/60">
+                        <CardContent className="p-0">
+                            <table className="w-full text-left">
+                                <thead className="border-b bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                    <tr>
+                                        <th className="px-6 py-3">Nome</th>
+                                        <th className="px-6 py-3">Descrição</th>
+                                        <th className="px-6 py-3 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {categories
+                                        .filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase()) ||
+                                            (c.description && c.description.toLowerCase().includes(catSearch.toLowerCase())))
+                                        .map((c) => (
+                                            <tr key={c.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4 text-sm font-medium">{c.name}</td>
+                                                <td className="px-6 py-4 text-sm text-muted-foreground">{c.description || "–"}</td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground"
+                                                        onClick={() => {
+                                                            setEditingCategory(c);
+                                                            setIsEditCategoryOpen(true);
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => handleDeleteCategory(c.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="usuarios" className="mt-6">
                     <div className="mb-4 flex items-center justify-between">
                         <div className="relative w-64">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input placeholder="Buscar usuário..." className="pl-9 h-9 text-xs" />
+                            <Input
+                                placeholder="Buscar usuário..."
+                                className="pl-9 h-9 text-xs"
+                                value={userSearch}
+                                onChange={(e) => setUserSearch(e.target.value)}
+                            />
                         </div>
                         <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
                             <DialogTrigger asChild>
@@ -475,50 +630,53 @@ const Configuracoes = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {users.map((u) => (
-                                        <tr key={u.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                                                        {u.name.charAt(0).toUpperCase()}
+                                    {users
+                                        .filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                                            u.username.toLowerCase().includes(userSearch.toLowerCase()))
+                                        .map((u) => (
+                                            <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                                            {u.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-sm font-medium">{u.name}</span>
                                                     </div>
-                                                    <span className="text-sm font-medium">{u.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-muted-foreground">{u.username}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={cn(
-                                                    "text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded",
-                                                    u.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                                                )}>
-                                                    {u.role}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-muted-foreground"
-                                                    onClick={() => {
-                                                        setEditingUser(u);
-                                                        setIsEditUserOpen(true);
-                                                    }}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                {u.username !== "admin" && (
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-muted-foreground">{u.username}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded",
+                                                        u.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                                    )}>
+                                                        {u.role}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        onClick={() => handleDeleteUser(u.id)}
+                                                        className="h-8 w-8 text-muted-foreground"
+                                                        onClick={() => {
+                                                            setEditingUser(u);
+                                                            setIsEditUserOpen(true);
+                                                        }}
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    {u.username !== "admin" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            onClick={() => handleDeleteUser(u.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </CardContent>
@@ -732,6 +890,36 @@ const Configuracoes = () => {
                     )}
                     <DialogFooter>
                         <Button onClick={handleUpdateUser} className="w-full">Salvar Alterações</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Category Dialog */}
+            <Dialog open={isEditCategoryOpen} onOpenChange={setIsEditCategoryOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Categoria</DialogTitle>
+                    </DialogHeader>
+                    {editingCategory && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Nome</Label>
+                                <Input
+                                    value={editingCategory.name}
+                                    onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Descrição</Label>
+                                <Input
+                                    value={editingCategory.description || ""}
+                                    onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={handleUpdateCategory}>Salvar Alterações</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

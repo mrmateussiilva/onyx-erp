@@ -34,23 +34,30 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 
+interface Category {
+    id: number;
+    name: string;
+}
+
 interface Product {
     id: number;
     name: string;
     price: number;
     stock_quantity: number;
     category: string;
+    category_id: number | null;
 }
 
 const Produtos = () => {
     const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [isNewProductOpen, setIsNewProductOpen] = useState(false);
 
     // Form fields
     const [prodName, setProdName] = useState("");
     const [prodPrice, setProdPrice] = useState("");
     const [prodStock, setProdStock] = useState("");
-    const [prodCategory, setProdCategory] = useState("água");
+    const [prodCategoryId, setProdCategoryId] = useState<string>("");
 
     // Edit states
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -64,8 +71,15 @@ const Produtos = () => {
 
     const loadData = async () => {
         try {
-            const p = await invoke<Product[]>("get_products");
+            const [p, c] = await Promise.all([
+                invoke<Product[]>("get_products"),
+                invoke<Category[]>("get_categories")
+            ]);
             setProducts(p);
+            setCategories(c);
+            if (c.length > 0) {
+                setProdCategoryId(c[0].id.toString());
+            }
         } catch (err) {
             console.error(err);
         }
@@ -73,11 +87,13 @@ const Produtos = () => {
 
     const handleCreateProduct = async () => {
         try {
+            const selectedCat = categories.find(c => c.id === parseInt(prodCategoryId));
             await invoke("create_product", {
                 name: prodName,
                 price: parseFloat(prodPrice),
                 stockQuantity: parseInt(prodStock),
-                category: prodCategory
+                category: selectedCat?.name || "Geral",
+                categoryId: parseInt(prodCategoryId)
             });
             setIsNewProductOpen(false);
             setProdName(""); setProdPrice(""); setProdStock("");
@@ -91,12 +107,14 @@ const Produtos = () => {
     const handleUpdateProduct = async () => {
         if (!editingProduct) return;
         try {
+            const selectedCat = categories.find(c => c.id === editingProduct.category_id);
             await invoke("update_product", {
                 id: editingProduct.id,
                 name: editingProduct.name,
                 price: parseFloat(editingProduct.price.toString()),
                 stockQuantity: parseInt(editingProduct.stock_quantity.toString()),
-                category: editingProduct.category
+                category: selectedCat?.name || editingProduct.category,
+                categoryId: editingProduct.category_id
             });
             setIsEditProductOpen(false);
             loadData();
@@ -159,13 +177,14 @@ const Produtos = () => {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="category">Categoria</Label>
-                                <Select value={prodCategory} onValueChange={setProdCategory}>
+                                <Select value={prodCategoryId} onValueChange={setProdCategoryId}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="água">Água</SelectItem>
-                                        <SelectItem value="gás">Gás</SelectItem>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -205,10 +224,12 @@ const Produtos = () => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                                                    {prod.category === "água" ? (
+                                                    {prod.category.toLowerCase().includes("água") ? (
                                                         <Gem className="h-5 w-5 text-primary" />
-                                                    ) : (
+                                                    ) : prod.category.toLowerCase().includes("gás") ? (
                                                         <Flame className="h-5 w-5 text-primary" />
+                                                    ) : (
+                                                        <Package className="h-5 w-5 text-primary" />
                                                     )}
                                                 </div>
                                                 <span className="text-sm font-medium">{prod.name}</span>
@@ -299,15 +320,16 @@ const Produtos = () => {
                             <div className="grid gap-2">
                                 <Label htmlFor="edit-category">Categoria</Label>
                                 <Select
-                                    value={editingProduct.category}
-                                    onValueChange={(val) => setEditingProduct({ ...editingProduct, category: val })}
+                                    value={editingProduct.category_id?.toString() || ""}
+                                    onValueChange={(val) => setEditingProduct({ ...editingProduct, category_id: parseInt(val) })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="água">Água</SelectItem>
-                                        <SelectItem value="gás">Gás</SelectItem>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

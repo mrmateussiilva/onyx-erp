@@ -5,3 +5,4 @@ pub mod user;
 pub mod payment_method;
 pub mod shipping_method;
 pub mod client_gallon;
+pub mod category;

@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Tags,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useTheme } from "@/components/theme-provider";
