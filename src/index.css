@@ -6,65 +6,98 @@
 
 @layer base {
   :root {
-    --background: 240 2% 6%; /* #0F0F10 */
-    --foreground: 0 0% 96%; /* #F5F5F5 */
-
-    --card: 240 2% 11%; /* #1A1A1D */
-    --card-foreground: 0 0% 96%;
-
-    --popover: 240 2% 6%;
-    --popover-foreground: 0 0% 96%;
-
-    --primary: 43 51% 57%; /* #C6A75E */
-    --primary-foreground: 240 2% 6%; /* Texto preto no background âmbar */
-
-    --secondary: 240 2% 15%;
-    --secondary-foreground: 0 0% 70%; /* #B3B3B3 */
-
-    --muted: 240 2% 10%;
-    --muted-foreground: 0 0% 70%;
-
+    --background: 210 40% 98%;
+    /* #F8FAFC */
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 43 51% 57%;
+    /* #C6A75E */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 215 16% 47%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
     --accent: 43 51% 57%;
-    --accent-foreground: 240 2% 6%;
-
-    --destructive: 0 66% 47%; /* #C62828 */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 240 2% 18%; /* #2A2A2E */
-    --input: 240 2% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 43 51% 57%;
-
     --radius: 6px;
 
-    /* Custom tokens */
-    --sidebar-bg: 240 2% 8%; /* #121214 */
-    --sidebar-fg: 0 0% 70%; /* #B3B3B3 */
-    --sidebar-fg-active: 43 51% 57%; /* Item ativo com destaque âmbar */
-    --sidebar-accent: 43 51% 57%;
-    --sidebar-hover: 240 2% 12%;
+    /* Custom tokens Light */
+    --sidebar-bg: 220 33% 98%;
+    --sidebar-fg: 215 16% 47%;
+    --sidebar-fg-active: 43 51% 57%;
+    --sidebar-hover: 210 40% 94%;
 
-    --warning: 38 92% 56%; /* #F9A825 */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    --warning: 38 92% 56%;
+    /* #F9A825 */
     --warning-foreground: 240 2% 6%;
 
-    --success: 122 46% 34%; /* #2E7D32 */
+    --success: 122 46% 34%;
+    /* #2E7D32 */
     --success-foreground: 0 0% 100%;
 
     --status-ok: 122 46% 34%;
     --status-expiring: 38 92% 56%;
     --status-expired: 0 66% 47%;
+  }
+
+  .dark {
+    --background: 240 4% 5%;
+    /* #0D0D0E - Mais suave que preto puro */
+    --foreground: 0 0% 96%;
+    --card: 240 4% 9%;
+    /* #161618 */
+    --card-foreground: 0 0% 96%;
+    --popover: 240 4% 5%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 43 51% 57%;
+    --primary-foreground: 240 4% 5%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 70%;
+    --muted: 240 4% 8%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 43 51% 57%;
+    --accent-foreground: 240 4% 5%;
+    --destructive: 0 66% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 15%;
+    /* #242426 */
+    --input: 240 4% 15%;
+    --ring: 43 51% 57%;
+
+    /* Custom tokens Dark */
+    --sidebar-bg: 240 4% 7%;
+    /* #111112 */
+    --sidebar-fg: 0 0% 70%;
+    --sidebar-fg-active: 43 51% 57%;
+    --sidebar-hover: 240 4% 11%;
 
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.5);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.6);
 
-    --sidebar-background: 240 2% 8%;
-    --sidebar-foreground: 0 0% 70%;
-    --sidebar-primary: 43 51% 57%;
-    --sidebar-primary-foreground: 240 2% 6%;
-    --sidebar-accent: 43 51% 62%; /* #D4B96A para hover */
-    --sidebar-accent-foreground: 240 2% 6%;
-    --sidebar-border: 240 2% 18%;
-    --sidebar-ring: 43 51% 57%;
+    --warning: 38 92% 56%;
+    /* #F9A825 */
+    --warning-foreground: 240 2% 6%;
+
+    --success: 122 46% 34%;
+    /* #2E7D32 */
+    --success-foreground: 0 0% 100%;
+
+    --status-ok: 122 46% 34%;
+    --status-expiring: 38 92% 56%;
+    --status-expired: 0 66% 47%;
   }
 }
 

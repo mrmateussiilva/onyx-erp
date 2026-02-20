@@ -9,8 +9,7 @@ import {
     LayoutGrid,
     List,
     Trash2,
-    Edit3,
-    Droplets
+    Edit3
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,7 +164,7 @@ const Produtos = () => {
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
                                                     {prod.category === "água" ? (
-                                                        <Droplets className="h-5 w-5 text-primary" />
+                                                        <Gem className="h-5 w-5 text-primary" />
                                                     ) : (
                                                         <Flame className="h-5 w-5 text-primary" />
                                                     )}

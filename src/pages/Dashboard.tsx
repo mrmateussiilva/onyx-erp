@@ -7,7 +7,7 @@ import {
   AlertTriangle,
   TrendingUp,
   ArrowUpRight,
-  Droplets,
+  Gem,
   Flame,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -6,7 +6,7 @@ import {
   Users,
   BarChart3,
   Package,
-  Droplets,
+  Gem,
   Plus,
   UserPlus,
   LogOut,
@@ -14,7 +14,10 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,10 +38,15 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user.role === "admin";
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -163,6 +171,40 @@ export function AppLayout({ children }: AppLayoutProps) {
             variant="ghost"
             size="sm"
             className={cn(
+              "w-full justify-start text-sidebar-fg hover:bg-primary/10 hover:text-primary h-12 transition-all group",
+              isCollapsed ? "px-0 justify-center" : "gap-4 px-4"
+            )}
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? (
+              <Sun className={cn(
+                "shrink-0 transition-transform group-hover:rotate-45",
+                isCollapsed ? "h-6 w-6" : "h-[20px] w-[20px]"
+              )} />
+            ) : (
+              <Moon className={cn(
+                "shrink-0 transition-transform group-hover:-rotate-12",
+                isCollapsed ? "h-6 w-6" : "h-[20px] w-[20px]"
+              )} />
+            )}
+            {!isCollapsed && (
+              <span className="text-sm font-semibold animate-in fade-in slide-in-from-left-2 duration-300">
+                {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+              </span>
+            )}
+            {isCollapsed && (
+              <div className="absolute left-full ml-4 hidden group-hover:block z-50">
+                <div className="bg-sidebar-bg border border-sidebar-hover text-sidebar-fg px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                  {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+                </div>
+              </div>
+            )}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
               "w-full justify-start text-sidebar-fg hover:bg-destructive/10 hover:text-destructive h-12 transition-all group",
               isCollapsed ? "px-0 justify-center" : "gap-4 px-4"
             )}
@@ -186,7 +228,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
           {!isCollapsed && (
             <div className="px-4 pt-1 animate-in fade-in slide-in-from-left-2 duration-300">
-              <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-widest font-black">AquaGás Flow v0.0.1</p>
+              <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-widest font-black">Onyx ERP v1.0.0</p>
             </div>
           )}
         </div>
