@@ -17,9 +17,27 @@ import { Link } from "react-router-dom";
 
 interface DashboardData {
   revenue: string;
+  revenue_change: string;
   sales_count: number;
+  sales_change: string;
   client_count: number;
+  client_change: string;
   alerts: number;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  stock_quantity: number;
+  category: string;
+}
+
+interface ExpiringGallon {
+  id: number;
+  client_name: string;
+  brand: string;
+  expiration_date: string;
 }
 
 interface Sale {
@@ -35,11 +53,16 @@ interface Sale {
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardData>({
     revenue: "R$ 0,00",
+    revenue_change: "+0%",
     sales_count: 0,
+    sales_change: "+0",
     client_count: 0,
+    client_change: "+0",
     alerts: 0,
   });
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [expiringGallons, setExpiringGallons] = useState<ExpiringGallon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,12 +71,16 @@ const Dashboard = () => {
 
   const loadDashboard = async () => {
     try {
-      const statsData = await invoke<DashboardData>("get_dashboard_stats");
-      const salesData = await invoke<Sale[]>(
-        "get_recent_sales"
-      );
+      const [statsData, salesData, productsData, gallonsData] = await Promise.all([
+        invoke<DashboardData>("get_dashboard_stats"),
+        invoke<Sale[]>("get_recent_sales"),
+        invoke<Product[]>("get_popular_products"),
+        invoke<ExpiringGallon[]>("get_expiring_gallons")
+      ]);
       setStats(statsData);
       setRecentSales(salesData);
+      setPopularProducts(productsData);
+      setExpiringGallons(gallonsData);
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
     } finally {
@@ -65,19 +92,19 @@ const Dashboard = () => {
     {
       label: "Vendas Hoje",
       value: stats.revenue,
-      change: "+0%",
+      change: stats.revenue_change,
       icon: DollarSign,
     },
     {
       label: "Pedidos Hoje",
       value: stats.sales_count.toString(),
-      change: "+0",
+      change: stats.sales_change,
       icon: ShoppingCart,
     },
     {
       label: "Total de Clientes",
       value: stats.client_count.toString(),
-      change: "+0",
+      change: stats.client_change,
       icon: Users,
     },
     {
@@ -213,15 +240,37 @@ const Dashboard = () => {
                 Galões Vencendo
               </CardTitle>
               <span className="rounded-full bg-status-expiring/15 px-2 py-0.5 text-xs font-semibold text-status-expiring">
-                0
+                {expiringGallons.length}
               </span>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              <p className="p-6 text-sm text-center text-muted-foreground">
-                Nenhum alerta no momento
-              </p>
+              {expiringGallons.map((g) => (
+                <div key={g.id} className="flex items-center justify-between px-6 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {g.client_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground uppercase">
+                      {g.brand}
+                    </p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <p className="text-xs font-semibold text-status-expiring">
+                      Vence em:
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(g.expiration_date).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {expiringGallons.length === 0 && (
+                <p className="p-6 text-sm text-center text-muted-foreground">
+                  Nenhum galão vencendo em breve
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -231,44 +280,39 @@ const Dashboard = () => {
       <Card className="card-shadow border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
-            Produtos Populares
+            Produtos em Destaque
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                name: "Água Mineral 20L",
-                price: "R$ 18,00",
-                icon: Gem,
-                stock: 142,
-              },
-              { name: "Gás GLP P13", price: "R$ 60,00", icon: Flame, stock: 38 },
-              { name: "Gás GLP P45", price: "R$ 135,00", icon: Flame, stock: 12 },
-              {
-                name: "Água Mineral 10L",
-                price: "R$ 12,00",
-                icon: Gem,
-                stock: 85,
-              },
-            ].map((prod) => (
-              <div
-                key={prod.name}
-                className="flex items-center gap-3 rounded-lg border border-border/60 p-3"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <prod.icon className="h-5 w-5 text-primary" />
+            {popularProducts.map((prod) => {
+              const combined = `${prod.name} ${prod.category}`.toLowerCase();
+              const Icon = (combined.includes("gás") || combined.includes("glp")) ? Flame : Gem;
+
+              return (
+                <div
+                  key={prod.id}
+                  className="flex items-center gap-3 rounded-lg border border-border/60 p-3"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground truncate max-w-[120px]">
+                      {prod.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      R$ {prod.price.toFixed(2)} • Estoque: {prod.stock_quantity}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {prod.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {prod.price} • Estoque: {prod.stock}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+            {popularProducts.length === 0 && (
+              <p className="col-span-full py-4 text-center text-sm text-muted-foreground">
+                Nenhum produto cadastrado no momento
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
