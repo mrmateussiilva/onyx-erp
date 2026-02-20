@@ -96,7 +96,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Visão geral da distribuidora
+            Visão estratégica e monitoramento em tempo real
           </p>
         </div>
         <Button asChild className="gap-1.5">
@@ -240,7 +240,7 @@ const Dashboard = () => {
               {
                 name: "Água Mineral 20L",
                 price: "R$ 18,00",
-                icon: Droplets,
+                icon: Gem,
                 stock: 142,
               },
               { name: "Gás GLP P13", price: "R$ 60,00", icon: Flame, stock: 38 },
@@ -248,7 +248,7 @@ const Dashboard = () => {
               {
                 name: "Água Mineral 10L",
                 price: "R$ 12,00",
-                icon: Droplets,
+                icon: Gem,
                 stock: 85,
               },
             ].map((prod) => (

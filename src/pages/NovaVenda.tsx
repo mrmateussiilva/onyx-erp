@@ -133,7 +133,83 @@ const NovaVenda = () => {
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const shippingFee = shippingMethods.find(m => m.name === selectedShipping)?.fee || 0;
 
-  const handleSaveSale = async () => {
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const itemsHtml = cart.map(i => `
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${i.qty}x ${i.name}</td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">R$ ${(i.price * i.qty).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Onyx ERP - Pedido</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+            .header { text-align: center; border-bottom: 2px solid #C6A75E; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 28px; font-weight: bold; color: #000; letter-spacing: -1px; }
+            .subtitle { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            .total-row { font-size: 20px; font-weight: bold; }
+            .total-label { text-align: right; padding-right: 20px; }
+            .total-value { color: #C6A75E; text-align: right; }
+            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+            .info { margin-bottom: 20px; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">Onyx ERP</div>
+            <div class="subtitle">Soluções Corporativas</div>
+          </div>
+          
+          <div class="info">
+            <strong>Cliente:</strong> ${selectedClient?.name || 'Não informado'}<br>
+            <strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}<br>
+            <strong>Pagamento:</strong> ${selectedPayment}<br>
+            <strong>Entrega:</strong> ${selectedShipping}
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left; border-bottom: 2px solid #eee; padding-bottom: 10px;">Item</th>
+                <th style="text-align: right; border-bottom: 2px solid #eee; padding-bottom: 10px;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <table>
+            <tr class="total-row">
+              <td class="total-label">TOTAL</td>
+              <td class="total-value">R$ ${(subtotal + shippingFee).toFixed(2)}</td>
+            </tr>
+          </table>
+
+          <div class="footer">
+            Gerado por Onyx ERP - ${new Date().getFullYear()}
+          </div>
+
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleSaveSale = async (shouldPrint: boolean = false) => {
     if (!selectedClient || cart.length === 0 || !selectedPayment || !selectedShipping) return;
 
     try {
@@ -144,6 +220,11 @@ const NovaVenda = () => {
         total: subtotal + shippingFee,
         paymentMethod: selectedPayment
       });
+
+      if (shouldPrint) {
+        handlePrint();
+      }
+
       alert("Venda realizada com sucesso!");
       setCart([]);
       setSelectedClient(null);
@@ -160,7 +241,6 @@ const NovaVenda = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Nova Venda</h1>
-        <p className="text-sm text-muted-foreground">Registre uma venda rapidamente</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
@@ -385,7 +465,7 @@ const NovaVenda = () => {
                 <Button
                   className="w-full gap-2 h-11 text-sm font-semibold"
                   disabled={cart.length === 0 || !selectedClient || !selectedPayment || !selectedShipping}
-                  onClick={handleSaveSale}
+                  onClick={() => handleSaveSale(true)}
                 >
                   <Printer className="h-4 w-4" />
                   Salvar e Imprimir
@@ -394,7 +474,7 @@ const NovaVenda = () => {
                   variant="outline"
                   className="w-full gap-2 text-sm"
                   disabled={cart.length === 0 || !selectedClient || !selectedPayment || !selectedShipping}
-                  onClick={handleSaveSale}
+                  onClick={() => handleSaveSale(false)}
                 >
                   <Save className="h-4 w-4" />
                   Salvar sem Imprimir
