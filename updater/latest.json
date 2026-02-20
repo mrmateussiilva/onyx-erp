@@ -1,0 +1,11 @@
+{
+    "version": "0.1.0",
+    "notes": "Primeira versão do Aquagas Flow",
+    "pub_date": "2026-02-19T22:26:32Z",
+    "platforms": {
+        "windows-x86_64": {
+            "url": "https://github.com/mrmateussiilva/onyx-erp/releases/download/0.1.0/aquagas-flw_0.1.0_x64_en-US.msi",
+            "signature": ""
+        }
+    }
+}

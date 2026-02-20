@@ -582,6 +582,7 @@ async fn seed_db(db: State<'_, DatabaseConnection>) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_log::Builder::default().build())
     .setup(|app| {
         let handle = app.handle().clone();
