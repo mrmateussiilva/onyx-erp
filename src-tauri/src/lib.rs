@@ -117,6 +117,64 @@ async fn get_recent_sales(db: State<'_, DatabaseConnection>) -> Result<serde_jso
 }
 
 #[tauri::command]
+async fn get_client_details(
+    db: State<'_, DatabaseConnection>,
+    client_id: i32,
+) -> Result<serde_json::Value, String> {
+    use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, QueryOrder};
+    
+    let client = db::entities::client::Entity::find_by_id(client_id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Cliente não encontrado")?;
+
+    let sales = db::entities::sale::Entity::find()
+        .filter(db::entities::sale::Column::ClientId.eq(client_id))
+        .order_by_desc(db::entities::sale::Column::Id)
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let gallons = db::entities::client_gallon::Entity::find()
+        .filter(db::entities::client_gallon::Column::ClientId.eq(client_id))
+        .all(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "client": client,
+        "historico": sales,
+        "galoes": gallons,
+        "totalPedidos": sales.len()
+    }))
+}
+
+#[tauri::command]
+async fn add_client_gallon(
+    db: State<'_, DatabaseConnection>,
+    client_id: i32,
+    brand: String,
+    expiration_date: String,
+) -> Result<db::entities::client_gallon::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set};
+    use chrono::DateTime;
+
+    let expiration = DateTime::parse_from_rfc3339(&expiration_date)
+        .map_err(|e| format!("Data inválida: {}", e))?
+        .with_timezone(&chrono::Utc);
+
+    let gallon = db::entities::client_gallon::ActiveModel {
+        client_id: Set(client_id),
+        brand: Set(brand),
+        expiration_date: Set(expiration.into()),
+        ..Default::default()
+    };
+
+    gallon.insert(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn get_sales_report(
     db: State<'_, DatabaseConnection>,
     start_iso: String,
@@ -434,7 +492,9 @@ pub fn run() {
         get_shipping_methods,
         create_shipping_method,
         get_payment_methods,
-        create_payment_method
+        create_payment_method,
+        get_client_details,
+        add_client_gallon
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -70,21 +70,62 @@ const Clientes = () => {
     }
   };
 
+  const loadDetails = async () => {
+    if (!selectedId) return;
+    try {
+      const details = await invoke<any>("get_client_details", { client_id: selectedId });
+
+      // Verificação defensiva se o ID ainda é o mesmo após o await
+      setClients(prev => {
+        const index = prev.findIndex(c => c.id === selectedId);
+        if (index === -1) return prev;
+
+        const newClients = [...prev];
+        newClients[index] = {
+          ...newClients[index],
+          totalPedidos: details.totalPedidos,
+          historico: details.historico.map((h: any) => ({
+            data: new Date(h.created_at).toLocaleDateString('pt-BR'),
+            items: h.items,
+            pagamento: h.payment_method || "Não informado", // Confirmando snake_case
+            total: `R$ ${h.total.toFixed(2)}`
+          })),
+          galoes: details.galoes.map((g: any) => ({
+            id: g.id,
+            brand: g.brand,
+            vencimento: new Date(g.expiration_date).toLocaleDateString('pt-BR'),
+            status: new Date(g.expiration_date) < new Date() ? "expired" :
+              new Date(g.expiration_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? "expiring" : "ok",
+          }))
+        };
+        return newClients;
+      });
+    } catch (e) {
+      console.error("Erro ao carregar detalhes do cliente:", e);
+    }
+  };
+
   const loadClients = async () => {
     try {
       const data = await invoke<Client[]>("get_clients");
-      // Mapear dados do Rust para o formato esperado pelo frontend (com fallbacks)
-      const mappedData = data.map(client => ({
-        ...client,
-        since: new Date(client.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-        totalPedidos: client.totalPedidos || 0,
-        galoes: client.galoes || [],
-        historico: client.historico || []
-      }));
+      setClients(prev => {
+        return data.map(client => {
+          const existing = prev.find(c => c.id === client.id);
+          return {
+            ...client,
+            since: new Date(client.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+            totalPedidos: existing?.totalPedidos || 0,
+            galoes: existing?.galoes || [],
+            historico: existing?.historico || []
+          };
+        });
+      });
 
-      setClients(mappedData);
-      if (mappedData.length > 0 && selectedId === null) {
-        setSelectedId(mappedData[0].id);
+      if (data.length > 0 && selectedId === null) {
+        setSelectedId(data[0].id);
+      } else if (selectedId) {
+        // Se já temos um selecionado, forçamos o recarregamento dos detalhes
+        loadDetails();
       }
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
@@ -311,6 +352,49 @@ const Clientes = () => {
               </TabsContent>
 
               <TabsContent value="galoes" className="mt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-semibold">Galões em Posse</h3>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-8 gap-1">
+                        <Droplets className="h-3.5 w-3.5" /> Adicionar Galão
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Registrar Novo Galão</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label>Marca do Galão</Label>
+                          <Input id="brand" placeholder="Ex: Indaiá, Minalba..." />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Data de Vencimento</Label>
+                          <Input id="exp_date" type="date" />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={async (e) => {
+                          const brand = (document.getElementById('brand') as HTMLInputElement).value;
+                          const expDate = (document.getElementById('exp_date') as HTMLInputElement).value;
+                          if (!brand || !expDate) return;
+                          try {
+                            await invoke("add_client_gallon", {
+                              clientId: selectedId,
+                              brand,
+                              expirationDate: new Date(expDate).toISOString()
+                            });
+                            loadDetails();
+                            alert("Galão registrado com sucesso!");
+                          } catch (err) {
+                            alert(err);
+                          }
+                        }}>Salvar Galão</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="space-y-2">
                   {selected.galoes.map((g) => (
                     <div
@@ -322,7 +406,9 @@ const Clientes = () => {
                           <Droplets className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">Galão {g.id}</p>
+                          <p className="text-sm font-medium text-foreground">
+                            {g.brand ? `${g.brand} (#${g.id})` : `Galão #${g.id}`}
+                          </p>
                           <p className="text-xs text-muted-foreground">Vencimento: {g.vencimento}</p>
                         </div>
                       </div>
