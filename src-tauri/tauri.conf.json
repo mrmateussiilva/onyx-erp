@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "aquagas-flow",
+  "productName": "onyx-erp",
   "version": "0.1.0",
   "identifier": "com.tauri.dev",
   "build": {
@@ -12,26 +12,66 @@
   "app": {
     "windows": [
       {
-        "title": "Aquagas Flow",
-        "width": 800,
-        "height": 600,
+        "fullscreen": false,
         "resizable": true,
-        "fullscreen": false
+        "maximized": true,
+        "title": "Onyx ERP",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "label": "main"
       }
     ],
     "security": {
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://raw.githubusercontent.com/mrmateussiilva/onyx-erp/main/updater/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyNTFERTEzMzdGOTlDNEIKUldSTG5QazNFOTVSY3U0QnRmQnJoMEl6dnBNdGxwazN3MU5QSisvbmJDZWxQdGlTNFJmQjEzdnQK"
+    }
+  },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "targets": [
+      "msi"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": [],
+    "externalBin": [],
+    "copyright": "© 2025 FinderBit. Todos os direitos reservados.",
+    "category": "Business",
+    "shortDescription": "Onyx ERP - Sistema de Gestão Empresarial",
+    "longDescription": "Onyx ERP é um sistema completo de gestão empresarial desenvolvido pela FinderBit. Controle pedidos, estoque, relatórios e muito mais.",
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    }
   }
 }

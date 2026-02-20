@@ -94,8 +94,19 @@ const Login = () => {
                             )}
                         </Button>
                     </form>
-                    <div className="mt-6 text-center text-xs text-muted-foreground">
-                        Onyx ERP v1.0.0 • Gerenciamento Corporativo
+                    <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
+                        <p>Onyx ERP v0.1.0 • Gerenciamento Corporativo</p>
+                        <p>
+                            Desenvolvido por{" "}
+                            <a
+                                href="https://www.finderbit.com.br"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline font-medium"
+                            >
+                                FinderBit
+                            </a>
+                        </p>
                     </div>
                 </CardContent>
             </Card>
