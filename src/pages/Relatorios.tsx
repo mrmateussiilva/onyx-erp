@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 import {
   DollarSign,
   ShoppingCart,
@@ -9,6 +10,7 @@ import {
   Filter,
   Download,
   ChevronDown,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +103,29 @@ const Relatorios = () => {
       setIsLoading(false);
     }
   }
+
+  const handlePrint = async (saleId: number) => {
+    try {
+      const sale = await invoke<any>("get_sale_details", { id: saleId });
+
+      const pdfBase64 = await invoke<string>("generate_sale_pdf", {
+        clientName: sale.client_name,
+        items: sale.items,
+        total: sale.total,
+        saleNumber: sale.id
+      });
+
+      const blob = await fetch(`data:application/pdf;base64,${pdfBase64}`).then(res => res.blob());
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => printWindow.print();
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar nota.");
+    }
+  };
 
   if (!reportData) return <div className="p-8 text-center">Carregando relatório...</div>;
 
@@ -245,6 +270,7 @@ const Relatorios = () => {
                   <th className="px-6 py-4">Itens do Pedido</th>
                   <th className="px-6 py-4">Pagamento</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
+                  <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -266,6 +292,11 @@ const Relatorios = () => {
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-right text-primary">
                       R$ {sale.total.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handlePrint(sale.id)}>
+                        <Printer className="h-4 w-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
