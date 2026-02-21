@@ -18,6 +18,7 @@ import {
     AlertCircle,
     Info,
     Tags,
+    Building2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,11 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useUpdater } from "@/hooks/use-updater";
+import {
+    CompanySettings,
+    loadCompanySettings,
+    saveCompanySettings,
+} from "@/lib/companySettings";
 
 interface User {
     id: number;
@@ -106,6 +112,14 @@ const Configuracoes = () => {
 
     const { ConfirmDialog, confirm: openConfirm } = useConfirm();
     const updater = useUpdater();
+
+    // Company settings
+    const [company, setCompany] = useState<CompanySettings>(loadCompanySettings);
+
+    const handleSaveCompany = () => {
+        saveCompanySettings(company);
+        toast.success("Dados da empresa salvos!");
+    };
 
     useEffect(() => {
         loadData();
@@ -312,7 +326,11 @@ const Configuracoes = () => {
             </div>
 
             <Tabs defaultValue="envio" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 max-w-[850px]">
+                <TabsList className="grid w-full grid-cols-6 max-w-[1020px]">
+                    <TabsTrigger value="empresa" className="gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Empresa
+                    </TabsTrigger>
                     <TabsTrigger value="envio" className="gap-2">
                         <Truck className="h-4 w-4" />
                         Fretes
@@ -334,6 +352,123 @@ const Configuracoes = () => {
                         Atualizações
                     </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="empresa" className="mt-6">
+                    <Card className="card-shadow border-border/60 max-w-2xl">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-primary" />
+                                Dados da Empresa (Cabeçalho da Nota)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Logo Upload */}
+                            <div className="grid gap-2">
+                                <Label>Logo da Empresa (exibida na nota)</Label>
+                                <div className="flex items-center gap-3">
+                                    {company.logoBase64 ? (
+                                        <img
+                                            src={company.logoBase64}
+                                            alt="Logo"
+                                            className="h-12 w-auto rounded border border-border object-contain"
+                                        />
+                                    ) : (
+                                        <div className="flex h-12 w-24 items-center justify-center rounded border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                                            Sem logo
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-1">
+                                        <label className="cursor-pointer">
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
+                                                Escolher imagem
+                                            </span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    const reader = new FileReader();
+                                                    reader.onload = (ev) => {
+                                                        const result = ev.target?.result as string;
+                                                        setCompany({ ...company, logoBase64: result });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }}
+                                            />
+                                        </label>
+                                        {company.logoBase64 && (
+                                            <button
+                                                onClick={() => setCompany({ ...company, logoBase64: undefined })}
+                                                className="text-xs text-destructive hover:underline text-left"
+                                            >
+                                                Remover logo
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    PNG ou JPG recomendado. Quando não houver logo, o nome da empresa será exibido.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label>Nome da Empresa</Label>
+                                    <Input
+                                        value={company.name}
+                                        onChange={(e) => setCompany({ ...company, name: e.target.value })}
+                                        placeholder="Ex: MORAIS"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Subtítulo / Tipo</Label>
+                                    <Input
+                                        value={company.tagline}
+                                        onChange={(e) => setCompany({ ...company, tagline: e.target.value })}
+                                        placeholder="Ex: distribuidora"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Endereço - Linha 1</Label>
+                                <Input
+                                    value={company.addressLine1}
+                                    onChange={(e) => setCompany({ ...company, addressLine1: e.target.value })}
+                                    placeholder="Ex: Av. Tailândia - nº 127"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Endereço - Linha 2 (Bairro / Cidade)</Label>
+                                <Input
+                                    value={company.addressLine2}
+                                    onChange={(e) => setCompany({ ...company, addressLine2: e.target.value })}
+                                    placeholder="Ex: Bairro Columbia - Colatina - ES"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Telefone(s)</Label>
+                                <Input
+                                    value={company.phone}
+                                    onChange={(e) => setCompany({ ...company, phone: e.target.value })}
+                                    placeholder="Ex: (27) 98893-2758"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Mensagem de Rodapé</Label>
+                                <Input
+                                    value={company.footerMessage}
+                                    onChange={(e) => setCompany({ ...company, footerMessage: e.target.value })}
+                                    placeholder="Ex: Deus é nossa fonte!"
+                                />
+                            </div>
+                            <Button onClick={handleSaveCompany} className="w-full">
+                                Salvar Dados da Empresa
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 <TabsContent value="envio" className="mt-6">
                     <div className="mb-4 flex justify-end">

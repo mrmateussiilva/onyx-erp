@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
-import { SaleReceiptDocument } from "@/components/SaleReceipt";
+import { SaleReceiptDocument, SaleItem } from "@/components/SaleReceipt";
+import { loadCompanySettings } from "@/lib/companySettings";
 import {
     Dialog,
     DialogContent,
@@ -9,12 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
-
-interface SaleItem {
-    name: string;
-    qty: number;
-    price: number;
-}
 
 interface PrintPreviewModalProps {
     open: boolean;
@@ -36,15 +31,15 @@ export function PrintPreviewModal({
     date,
 }: PrintPreviewModalProps) {
     const viewerRef = useRef<HTMLDivElement>(null);
+    const company = loadCompanySettings();
 
     const handlePrint = () => {
-        // PDFViewer renders an <iframe> internally — call print() on it directly
         const iframe = viewerRef.current?.querySelector("iframe") as HTMLIFrameElement | null;
         if (iframe?.contentWindow) {
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
         } else {
-            // Fallback: generate blob and use a hidden iframe
+            // Fallback: generate fresh blob
             pdf(
                 <SaleReceiptDocument
                     clientName={clientName}
@@ -52,6 +47,7 @@ export function PrintPreviewModal({
                     total={total}
                     saleNumber={saleNumber}
                     date={date}
+                    company={company}
                 />
             )
                 .toBlob()
@@ -99,6 +95,7 @@ export function PrintPreviewModal({
                                 total={total}
                                 saleNumber={saleNumber}
                                 date={date}
+                                company={company}
                             />
                         </PDFViewer>
                     )}

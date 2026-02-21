@@ -3,9 +3,15 @@ import {
     Page,
     Text,
     View,
+    Image,
     StyleSheet,
     pdf,
 } from "@react-pdf/renderer";
+import {
+    CompanySettings,
+    defaultCompanySettings,
+    loadCompanySettings,
+} from "@/lib/companySettings";
 
 const styles = StyleSheet.create({
     page: {
@@ -123,7 +129,7 @@ const styles = StyleSheet.create({
     },
 });
 
-interface SaleItem {
+export interface SaleItem {
     name: string;
     qty: number;
     price: number;
@@ -135,6 +141,7 @@ interface SaleReceiptProps {
     total: number;
     saleNumber: number;
     date: string;
+    company?: CompanySettings;
 }
 
 const MAX_ROWS = 12;
@@ -146,6 +153,7 @@ const ViaContent = ({
     total,
     saleNumber,
     date,
+    company,
 }: {
     title: string;
     clientName: string;
@@ -153,6 +161,7 @@ const ViaContent = ({
     total: number;
     saleNumber: number;
     date: string;
+    company: CompanySettings;
 }) => {
     const emptyRows = Math.max(0, MAX_ROWS - items.length);
     const totalQty = items.reduce((acc, i) => acc + i.qty, 0);
@@ -162,14 +171,23 @@ const ViaContent = ({
             {/* Header */}
             <View style={styles.headerRow}>
                 <View style={styles.logoCell}>
-                    <Text style={styles.logoTitle}>MORAIS</Text>
-                    <Text style={styles.logoSubtitle}>distribuidora</Text>
+                    {company.logoBase64 ? (
+                        <Image
+                            src={company.logoBase64}
+                            style={{ maxHeight: 42, objectFit: "contain" }}
+                        />
+                    ) : (
+                        <>
+                            <Text style={styles.logoTitle}>{company.name}</Text>
+                            <Text style={styles.logoSubtitle}>{company.tagline}</Text>
+                        </>
+                    )}
                 </View>
                 <View style={styles.addressCell}>
-                    <Text>Morais Distribuidora de água mineral</Text>
-                    <Text>Av. Tailândia - nº 127</Text>
-                    <Text>Bairro Columbia - Colatina - ES</Text>
-                    <Text>Tel.: (27) 98893-2758 / (27) 99938-1129</Text>
+                    <Text>{company.name} {company.tagline}</Text>
+                    <Text>{company.addressLine1}</Text>
+                    <Text>{company.addressLine2}</Text>
+                    <Text>Tel.: {company.phone}</Text>
                 </View>
             </View>
 
@@ -229,7 +247,7 @@ const ViaContent = ({
             <View style={styles.footer}>
                 <Text style={styles.signatureLine}>ASSINATURA: _______________________________</Text>
                 <Text style={{ marginTop: 2, fontFamily: "Helvetica-Oblique", fontSize: 6 }}>
-                    Deus é nossa fonte!
+                    {company.footerMessage}
                 </Text>
             </View>
         </View>
@@ -242,6 +260,7 @@ export const SaleReceiptDocument = ({
     total,
     saleNumber,
     date,
+    company = defaultCompanySettings,
 }: SaleReceiptProps) => (
     <Document>
         <Page size="A4" orientation="landscape" style={styles.page}>
@@ -252,6 +271,7 @@ export const SaleReceiptDocument = ({
                 total={total}
                 saleNumber={saleNumber}
                 date={date}
+                company={company}
             />
             <ViaContent
                 title="2ª Via - Cliente"
@@ -260,6 +280,7 @@ export const SaleReceiptDocument = ({
                 total={total}
                 saleNumber={saleNumber}
                 date={date}
+                company={company}
             />
         </Page>
     </Document>
@@ -281,26 +302,8 @@ function printPdfBlob(blob: Blob) {
     };
 }
 
-export async function generateAndPrintSalePDF(
-    clientName: string,
-    items: SaleItem[],
-    total: number,
-    saleNumber: number
-) {
-    const date = new Date().toLocaleDateString("pt-BR");
-    const blob = await pdf(
-        <SaleReceiptDocument
-            clientName={clientName}
-            items={items}
-            total={total}
-            saleNumber={saleNumber}
-            date={date}
-        />
-    ).toBlob();
-    printPdfBlob(blob);
-}
-
 export async function generateAndPrintBlankPDF() {
+    const company = loadCompanySettings();
     const blob = await pdf(
         <SaleReceiptDocument
             clientName="____________________________________________________"
@@ -308,6 +311,7 @@ export async function generateAndPrintBlankPDF() {
             total={0}
             saleNumber={0}
             date="__/__/____"
+            company={company}
         />
     ).toBlob();
     printPdfBlob(blob);
