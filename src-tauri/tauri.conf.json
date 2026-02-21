@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "onyx-erp",
-  "version": "1.0.0",
+  "productName": "Onyx ERP",
+  "version": "1.0.2",
   "identifier": "br.com.finderbit.onyx-erp",
   "build": {
     "frontendDist": "../dist",
@@ -15,7 +15,7 @@
         "fullscreen": false,
         "resizable": true,
         "maximized": true,
-        "title": "Onyx ERP",
+        "title": "Onyx ERP - FinderBit",
         "width": 1280,
         "height": 800,
         "minWidth": 800,
@@ -41,7 +41,7 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": [
-      "msi"
+      "nsis"
     ],
     "icon": [
       "icons/32x32.png",
@@ -54,8 +54,8 @@
     "externalBin": [],
     "copyright": "© 2025 FinderBit. Todos os direitos reservados.",
     "category": "Business",
-    "shortDescription": "Onyx ERP - Sistema de Gestão Empresarial",
-    "longDescription": "Onyx ERP é um sistema completo de gestão empresarial desenvolvido pela FinderBit. Controle pedidos, estoque, relatórios e muito mais.",
+    "shortDescription": "Onyx ERP by FinderBit",
+    "longDescription": "Onyx ERP da FinderBit. Gestão completa de pedidos, estoque e relatórios.",
     "linux": {
       "deb": {
         "depends": []
@@ -66,6 +66,15 @@
       "minimumSystemVersion": "10.13"
     },
     "windows": {
+      "nsis": {
+        "languages": [
+          "PortugueseBrazilian"
+        ],
+        "installMode": "both",
+        "installerIcon": "assets/installer_icon.ico",
+        "headerImage": "assets/nsis_header.bmp",
+        "sidebarImage": "assets/nsis_sidebar.bmp"
+      },
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "",
