@@ -1,11 +1,11 @@
 {
-    "version": "0.1.0",
-    "notes": "Primeira versão do Aquagas Flow",
+    "version": "1.0.2",
+    "notes": "Melhorias na tela de impressão",
     "pub_date": "2026-02-19T22:26:32Z",
     "platforms": {
         "windows-x86_64": {
-            "url": "https://github.com/mrmateussiilva/onyx-erp/releases/download/0.1.0/aquagas-flw_0.1.0_x64_en-US.msi",
-            "signature": ""
+            "url": "https://github.com/mrmateussiilva/onyx-erp/releases/download/1.0.2/Onyx.ERP_1.0.2_x64_en-US.msi",
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSTG5QazNFOTVSY2wrN2hQZmtxRjU0RlpOS0I0dUNUWnFiS1hJemlxTWtNOUw0WWI0S2ZqSkp3V2F4aDROTWhVTHR5c3JmajlwYTVHK0JMam9uQS8wZklqTGRCdWQrMEFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcxNjk2ODMxCWZpbGU6T255eCBFUlBfMS4wLjJfeDY0X2VuLVVTLm1zaQovSXdyWklrL3M1QUhuYU01am5xTEJPV3VNM3VjNm4vWWJVWEE5OXJLSlBTbjVDcmlzNFo0cGtTKzEwNERkaEFPYnVPZEVjSkEzZkFtRnV2SE5Bb0FEdz09Cg=="
         }
     }
 }
