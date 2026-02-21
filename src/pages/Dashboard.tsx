@@ -116,6 +116,18 @@ const Dashboard = () => {
     },
   ];
 
+  const formatItems = (itemsJson: string) => {
+    try {
+      const items = JSON.parse(itemsJson);
+      if (Array.isArray(items)) {
+        return items.map((item: any) => `${item.name} (x${item.qty})`).join(", ");
+      }
+      return itemsJson;
+    } catch (e) {
+      return itemsJson;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page title */}
@@ -206,7 +218,7 @@ const Dashboard = () => {
                       {sale.client_name || `Cliente #${sale.client_id}`}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {sale.items}
+                      {formatItems(sale.items)}
                     </p>
                   </div>
                   <div className="text-right ml-4">

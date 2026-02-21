@@ -127,6 +127,18 @@ const Relatorios = () => {
     }
   };
 
+  const formatItems = (itemsJson: string) => {
+    try {
+      const items = JSON.parse(itemsJson);
+      if (Array.isArray(items)) {
+        return items.map((item: any) => `${item.name} (x${item.qty})`).join(", ");
+      }
+      return itemsJson;
+    } catch (e) {
+      return itemsJson;
+    }
+  };
+
   if (!reportData) return <div className="p-8 text-center">Carregando relatório...</div>;
 
   const stats = [
@@ -283,7 +295,7 @@ const Relatorios = () => {
                       <p className="text-sm font-semibold">{sale.client_name}</p>
                     </td>
                     <td className="px-6 py-4 text-xs text-muted-foreground max-w-xs truncate">
-                      {sale.items}
+                      {formatItems(sale.items)}
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-[10px] bg-muted px-2 py-1 rounded-full font-medium">

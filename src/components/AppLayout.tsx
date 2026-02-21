@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { label: "Nova Venda", icon: ShoppingCart, path: "/nova-venda" },
+  { label: "Vendas", icon: Tags, path: "/vendas" },
   { label: "Clientes", icon: Users, path: "/clientes" },
   { label: "Produtos", icon: Package, path: "/produtos" },
   { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
