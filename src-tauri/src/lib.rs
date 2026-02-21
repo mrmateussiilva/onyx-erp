@@ -470,6 +470,41 @@ async fn get_sale_details(
 }
 
 #[tauri::command]
+async fn delete_sale(db: State<'_, DatabaseConnection>, id: i32) -> Result<(), String> {
+    use sea_orm::EntityTrait;
+    db::entities::sale::Entity::delete_by_id(id)
+        .exec(db.inner())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_sale(
+    db: State<'_, DatabaseConnection>,
+    id: i32,
+    client_id: i32,
+    items: serde_json::Value,
+    total: f64,
+    payment_method: String,
+) -> Result<db::entities::sale::Model, String> {
+    use sea_orm::{ActiveModelTrait, Set, EntityTrait};
+    let mut sale: db::entities::sale::ActiveModel = db::entities::sale::Entity::find_by_id(id)
+        .one(db.inner())
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Venda não encontrada")?
+        .into();
+
+    sale.client_id = Set(client_id);
+    sale.items = Set(items.to_string());
+    sale.total = Set(total);
+    sale.payment_method = Set(payment_method);
+
+    sale.update(db.inner()).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn generate_sale_pdf(
     client_name: String,
     items: Vec<serde_json::Value>,
@@ -483,8 +518,16 @@ async fn generate_sale_pdf(
     // Tentar carregar fonte do sistema
     let font_dir = "/usr/share/fonts/Adwaita";
     
-    let font_family = genpdf::fonts::from_files(font_dir, "AdwaitaSans-Regular", None)
-        .map_err(|e| format!("Erro ao carregar fontes: {}. Verifique se AdwaitaSans está instalado.", e))?;
+    let font_path = std::path::Path::new(font_dir).join("AdwaitaSans-Regular.ttf");
+    let font_data = genpdf::fonts::FontData::load(&font_path, None)
+        .map_err(|e| format!("Erro ao carregar fonte {}: {}", font_path.display(), e))?;
+    
+    let font_family = genpdf::fonts::FontFamily {
+        regular: font_data.clone(),
+        bold: font_data.clone(),
+        italic: font_data.clone(),
+        bold_italic: font_data,
+    };
     
     let mut doc = genpdf::Document::new(font_family);
     doc.set_title("Nota de Venda");
@@ -599,6 +642,123 @@ async fn generate_sale_pdf(
     main_table.row()
         .element(create_via_content("1ª Via - Distribuidora"))
         .element(create_via_content("2ª Via - Cliente"))
+        .push().unwrap();
+    
+    doc.push(main_table);
+
+    let mut buffer = Vec::new();
+    doc.render(&mut buffer).map_err(|e| e.to_string())?;
+
+    Ok(general_purpose::STANDARD.encode(buffer))
+}
+
+#[tauri::command]
+async fn generate_blank_pdf() -> Result<String, String> {
+    use genpdf::elements::{Paragraph, TableLayout, LinearLayout, FrameCellDecorator};
+    use genpdf::{Alignment, style, Element};
+    use base64::{Engine as _, engine::general_purpose};
+
+    let font_dir = "/usr/share/fonts/Adwaita";
+    let font_path = std::path::Path::new(font_dir).join("AdwaitaSans-Regular.ttf");
+    let font_data = genpdf::fonts::FontData::load(&font_path, None)
+        .map_err(|e| format!("Erro ao carregar fonte {}: {}", font_path.display(), e))?;
+    
+    let font_family = genpdf::fonts::FontFamily {
+        regular: font_data.clone(),
+        bold: font_data.clone(),
+        italic: font_data.clone(),
+        bold_italic: font_data,
+    };
+    
+    let mut doc = genpdf::Document::new(font_family);
+    doc.set_title("Nota Branca");
+    
+    let mut decorator = genpdf::SimplePageDecorator::new();
+    decorator.set_margins(15);
+    doc.set_page_decorator(decorator);
+
+    let create_via_content = || -> LinearLayout {
+        let mut via = LinearLayout::vertical();
+        
+        let mut header_table = TableLayout::new(vec![3, 2]);
+        header_table.set_cell_decorator(FrameCellDecorator::new(true, true, false));
+        
+        let mut logo_box = LinearLayout::vertical();
+        logo_box.push(Paragraph::new("MORAIS").styled(style::Style::new().bold().with_font_size(24)));
+        logo_box.push(Paragraph::new("distribuidora").styled(style::Style::new().italic().with_font_size(16)));
+        
+        let mut address_box = LinearLayout::vertical();
+        address_box.push(Paragraph::new("Morais Distribuidora de água mineral").styled(style::Style::new().with_font_size(7)));
+        address_box.push(Paragraph::new("Av. Tailândia - nº 127").styled(style::Style::new().with_font_size(7)));
+        address_box.push(Paragraph::new("Bairro Columbia - Colatina - ES").styled(style::Style::new().with_font_size(7)));
+        address_box.push(Paragraph::new("Tel.: (27) 98893-2758 / (27) 99938-1129").styled(style::Style::new().with_font_size(7)));
+        
+        header_table.row().element(logo_box).element(address_box).push().unwrap();
+        via.push(header_table);
+        
+        via.push(Paragraph::new("Nota de controle N.º: ________")
+            .aligned(Alignment::Center)
+            .styled(style::Style::new().with_font_size(9)));
+            
+        let mut info_table = TableLayout::new(vec![1, 5]);
+        info_table.set_cell_decorator(FrameCellDecorator::new(true, true, false));
+        
+        info_table.row()
+            .element(Paragraph::new("CLIENTE:").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("____________________________________________________").styled(style::Style::new().with_font_size(9)))
+            .push().unwrap();
+        
+        info_table.row()
+            .element(Paragraph::new("DATA:").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("__/__/__").styled(style::Style::new().with_font_size(9)))
+            .push().unwrap();
+        
+        via.push(info_table);
+        
+        let mut items_table = TableLayout::new(vec![10, 2, 2, 3, 3]);
+        items_table.set_cell_decorator(FrameCellDecorator::new(true, true, false));
+        
+        items_table.row()
+            .element(Paragraph::new("Produto").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new(" ").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("Quant.").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("Valor Unit.").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("Valor Total").styled(style::Style::new().bold().with_font_size(9)))
+            .push().unwrap();
+        
+        for _ in 0..12 {
+            items_table.row()
+                .element(Paragraph::new(" "))
+                .element(Paragraph::new(" "))
+                .element(Paragraph::new(" "))
+                .element(Paragraph::new(" "))
+                .element(Paragraph::new(" "))
+                .push().unwrap();
+        }
+        via.push(items_table);
+        
+        let mut footer_table = TableLayout::new(vec![12, 2, 6]);
+        footer_table.set_cell_decorator(FrameCellDecorator::new(true, true, false));
+        footer_table.row()
+            .element(Paragraph::new("TOTAIS").aligned(Alignment::Center).styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new(" ").styled(style::Style::new().bold().with_font_size(9)))
+            .element(Paragraph::new("R$ ________").aligned(Alignment::Right).styled(style::Style::new().bold().with_font_size(9)))
+            .push().unwrap();
+        via.push(footer_table);
+        
+        via.push(genpdf::elements::Break::new(1));
+        via.push(Paragraph::new("_______________________________________").aligned(Alignment::Center));
+        via.push(Paragraph::new("ASSINATURA").aligned(Alignment::Center).styled(style::Style::new().bold().with_font_size(7)));
+        via.push(genpdf::elements::Break::new(0.5));
+        via.push(Paragraph::new("Deus é nossa fonte!").styled(style::Style::new().italic().with_font_size(7)));
+        
+        via
+    };
+
+    let mut main_table = TableLayout::new(vec![1, 1]);
+    main_table.row()
+        .element(create_via_content())
+        .element(create_via_content())
         .push().unwrap();
     
     doc.push(main_table);
@@ -958,7 +1118,7 @@ pub fn run() {
         });
         Ok(())
     })
-    .invoke_handler(tauri::generate_handler![
+  .invoke_handler(tauri::generate_handler![
         get_clients, 
         create_client, 
         update_client,
@@ -993,7 +1153,10 @@ pub fn run() {
         update_category,
         delete_category,
         get_popular_products,
-        get_expiring_gallons
+        get_expiring_gallons,
+        delete_sale,
+        update_sale,
+        generate_blank_pdf
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
