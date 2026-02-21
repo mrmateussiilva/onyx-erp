@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -18,6 +18,8 @@ import {
   Moon,
   Tags,
 } from "lucide-react";
+import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Logo } from "./Logo";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    getVersion().then((v) => {
+      setAppVersion(v);
+      getCurrentWindow().setTitle(`Onyx ERP v${v} - FinderBit`);
+    }).catch(console.error);
+  }, []);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user.role === "admin";
@@ -222,7 +232,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
           {!isCollapsed && (
             <div className="px-4 pt-1 animate-in fade-in slide-in-from-left-2 duration-300">
-              <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-widest font-black">Onyx ERP v1.0.0</p>
+              <p className="text-[10px] text-sidebar-fg/60 uppercase tracking-widest font-black">
+                Onyx ERP v{appVersion || "1.0.2"}
+              </p>
             </div>
           )}
         </div>

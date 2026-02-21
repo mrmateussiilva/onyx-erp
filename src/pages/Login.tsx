@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { Gem, Lock, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,12 @@ const Login = () => {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const [appVersion, setAppVersion] = useState("");
     const navigate = useNavigate();
+
+    useEffect(() => {
+        getVersion().then(setAppVersion).catch(console.error);
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -95,7 +101,7 @@ const Login = () => {
                         </Button>
                     </form>
                     <div className="mt-6 text-center text-xs text-muted-foreground space-y-1">
-                        <p>Onyx ERP v0.1.0 • Gerenciamento Corporativo</p>
+                        <p>Onyx ERP v{appVersion || "1.0.2"} • Gerenciamento Corporativo</p>
                         <p>
                             Desenvolvido por{" "}
                             <a
